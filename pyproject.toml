@@ -1,0 +1,24 @@
+[build-system]
+requires = [
+  "setuptools>=68",
+  "wheel>=0.38",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clvlib"
+version = "0.1.0"
+description = "Lyapunov exponents and Covariant Lyapunov Vectors utilities"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.22",
+  "scipy>=1.8",
+]
+readme = {text = "Utilities to compute Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) via variational integration, Gram–Schmidt re-orthonormalization, and Ginelli’s algorithm."}
+authors = [
+  {name = "clvlib authors"}
+]
+
+[tool.setuptools]
+packages = ["clvlib"]
+
