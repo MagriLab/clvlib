@@ -1,181 +1,10 @@
 import numpy as np
 import scipy.linalg
+from numba import njit
 from typing import Callable, Tuple
 
-def lyap_analysis(
-    f: Callable,
-    Df: Callable,
-    trajectory: np.ndarray,
-    t: np.ndarray,
-    *args
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Run Lyapunov-exponent integration and compute the associated CLVs.
-    (Type and dimensionality checks included.)
-    """
-    if not callable(f):
-        raise TypeError("f must be callable.")
-    if not callable(Df):
-        raise TypeError("Df must be callable.")
-
-    if not isinstance(trajectory, np.ndarray):
-        raise TypeError("trajectory must be a numpy.ndarray.")
-    if trajectory.ndim != 2:
-        raise ValueError("trajectory must have shape (n, nt).")
-
-    if not isinstance(t, np.ndarray):
-        raise TypeError("t must be a numpy.ndarray.")
-    if t.ndim != 1:
-        raise ValueError("t must be one-dimensional.")
-    if t.size < 2:
-        raise ValueError("t must contain at least two time points.")
-
-    n, nt = trajectory.shape
-    if nt != t.size:
-        raise ValueError(
-            f"trajectory has {nt} time samples but t has {t.size} entries."
-        )
-
-    Q_history, R_history, LE, LE_history, CLV_history = _compute_lyap_outputs(
-        f, Df, trajectory, t, *args
-    )
-
-    if CLV_history.shape != (n, n, nt):
-        raise RuntimeError(
-            "CLV history has inconsistent shape: "
-            f"expected {(n, n, nt)}, got {CLV_history.shape}."
-        )
-
-    return Q_history, R_history, LE, LE_history, CLV_history
-
-
-def _compute_lyap_outputs(
-    f: Callable,
-    Df: Callable,
-    trajectory: np.ndarray,
-    t: np.ndarray,
-    *args
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Helper that runs the Lyapunov integration and CLV computation.
-    """
-    Q_history, R_history, LE, LE_history = _lyap_int(f, Df, trajectory, t, *args)
-    CLV_history = _clvs(Q_history, R_history)
-    return Q_history, R_history, LE, LE_history, CLV_history
-
-def _lyap_int(f: Callable, Df: Callable, trajectory: np.ndarray, t: np.ndarray, *args) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Compute the Lyapunov exponents of a dynamical system
-    using variational equations and QR re-orthonormalization.
-
-    Parameters
-    ----------
-    f : Callable
-        System dynamics, f(t, x, *args) -> dx/dt.
-    Df : Callable
-        Jacobian of the system, Df(t, x, *args) -> ∂f/∂x.
-    x0 : ndarray, shape (n,)
-        Initial state vector.
-    t : ndarray, shape (nt,)
-        Time grid for integration.
-    *args : tuple
-        Extra parameters passed to f and Df.
-
-    Returns
-    -------
-    x_traj : ndarray, shape (n, nt)
-        State trajectory.
-    Q_history : ndarray, shape (n, n, nt)
-        History of orthonormal perturbation vectors.
-    R_history : ndarray, shape (n, n, nt)
-        History of upper triangular matrices from QR.
-    LE : ndarray, shape (n,)
-        Final Lyapunov exponents.
-    LE_history : ndarray, shape (n, nt)
-        Evolution of Lyapunov exponents over time.
-    """
-    dt = t[1] - t[0]
-    nt = len(t)
-    n = trajectory.shape[0]
-
-    # Allocate arrays
-    Q_history = np.empty((n, n, nt))
-    R_history = np.empty((n, n, nt))
-    LE_history = np.empty((n, nt))
-    
-
-    # Initial perturbations: identity
-    Q = np.eye(n)
-    Q_history[:, :, 0] = Q
-    R_history[:, :, 0] = np.eye(n)
-    LE_history[:, 0] = 0.0
-    log_sums = 0.
-
-    # Time integration loop
-    for i in range(nt - 1):
-        # Integrate state + variational system
-        _, Q = _var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
-
-        # Re-orthonormalize perturbations (keep MGS as requested)
-        Q, R = _qr_mgs(Q)
-        Q_history[:, :, i + 1] = Q
-        R_history[:, :, i + 1] = R
-
-        # Update cumulative Lyapunov sums
-        log_sums += np.log(np.abs(np.diag(R)))
-        LE_history[:, i + 1] = log_sums / ((i + 1) * dt)
-
-    return Q_history, R_history, LE_history[:,-1], LE_history
-
-
-def _clvs(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
-    """
-    Compute the Covariant Lyapunov Vectors (CLVs) using the method of
-    Ginelli et al. (PRL, 2007).
-
-    Parameters
-    ----------
-    Q : ndarray, shape (n_dim, n_lyap, n_time)
-        Timeseries of Gram–Schmidt vectors.
-    R : ndarray, shape (n_lyap, n_lyap, n_time)
-        Timeseries of upper-triangular R matrices from QR decomposition.
-
-    Returns
-    -------
-    V : ndarray, shape (n_dim, n_lyap, n_time)
-        Covariant Lyapunov Vectors (CLVs). Each slice V[:, :, t] contains
-        the CLVs at time index t.
-    """
-    n_dim, n_lyap, n_time = Q.shape
-
-    # CLV coordinates in GS basis
-    C = np.empty((n_lyap, n_lyap, n_time), dtype=Q.dtype)
-    D = np.empty((n_lyap, n_time), dtype=Q.dtype)  # norms of CLVs in GS basis
-    V = np.empty((n_dim, n_lyap, n_time), dtype=Q.dtype)
-
-    # Initialize last step
-    C[:, :, -1] = np.eye(n_lyap)
-    D[:, -1] = np.ones(n_lyap)
-    V[:, :, -1] = Q[:, :, -1] @ C[:, :, -1]
-
-    # Backward iteration
-    for i in reversed(range(n_time - 1)):
-        # Solve R_i * C_i = C_{i+1}
-        C_next = scipy.linalg.solve_triangular(
-            R[:, :, i], C[:, :, i + 1], lower=False, overwrite_b=True, check_finite=False
-        )
-        C[:, :, i], D[:, i] = _normalize_columns(C_next)
-
-        # Compute the CLVs 
-        V[:, :, i] = Q[:, :, i] @ C[:, :, i]
-
-    # Normalize CLVs across (lyap, time) without using 2D helper
-    V, _ = _normalize_columns(V)
-
-    return V
-
-
-def _var_rk4_step(
+@njit(cache=True)
+def var_rk4_step(
     f: Callable,
     Df: Callable,
     t: float,
@@ -230,39 +59,215 @@ def _var_rk4_step(
 
     return x_next, V_next
 
-def _qr_mgs(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def lyap_analysis(
+    f: Callable,
+    Df: Callable,
+    trajectory: np.ndarray,
+    t: np.ndarray,
+    *args
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    QR decomposition using the Modified Gram–Schmidt algorithm.
-    Numba-compatible (no Python exceptions).
+    Run Lyapunov-exponent integration and compute the associated CLVs.
+    (Type and dimensionality checks included.)
+    """
+    if not callable(f):
+        raise TypeError("f must be callable.")
+    if not callable(Df):
+        raise TypeError("Df must be callable.")
+
+    if not isinstance(trajectory, np.ndarray):
+        raise TypeError("trajectory must be a numpy.ndarray.")
+    if trajectory.ndim != 2:
+        raise ValueError("trajectory must have shape (n, nt).")
+
+    if not isinstance(t, np.ndarray):
+        raise TypeError("t must be a numpy.ndarray.")
+    if t.ndim != 1:
+        raise ValueError("t must be one-dimensional.")
+    if t.size < 2:
+        raise ValueError("t must contain at least two time points.")
+
+    n, nt = trajectory.shape
+    if nt != t.size:
+        raise ValueError(
+            f"trajectory has {nt} time samples but t has {t.size} entries."
+        )
+
+    Q_history, R_history, LE, LE_history, CLV_history = _compute_lyap_outputs(
+        f, Df, trajectory, t, *args
+    )
+
+    if CLV_history.shape != (n, n, nt):
+        raise RuntimeError(
+            "CLV history has inconsistent shape: "
+            f"expected {(n, n, nt)}, got {CLV_history.shape}."
+        )
+
+    return Q_history, R_history, LE, LE_history, CLV_history
+
+def _compute_lyap_outputs(
+    f: Callable,
+    Df: Callable,
+    trajectory: np.ndarray,
+    t: np.ndarray,
+    *args
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Helper that runs the Lyapunov integration and CLV computation.
+    """
+    Q_history, R_history, LE, LE_history = lyap_int(f, Df, trajectory, t, *args)
+    CLV_history = clvs(Q_history, R_history)
+    return Q_history, R_history, LE, LE_history, CLV_history
+
+def lyap_int(f: Callable,Df: Callable,trajectory: np.ndarray,t: np.ndarray,*args) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Compute the Lyapunov exponents of a dynamical system
+    using variational equations and QR re-orthonormalization.
 
     Parameters
     ----------
-    A : ndarray, shape (m, n)
-        Input matrix.
+    f : Callable
+        System dynamics, f(t, x, *args) -> dx/dt.
+    Df : Callable
+        Jacobian of the system, Df(t, x, *args) -> ∂f/∂x.
+    x0 : ndarray, shape (n,)
+        Initial state vector.
+    t : ndarray, shape (nt,)
+        Time grid for integration.
+    *args : tuple
+        Extra parameters passed to f and Df.
 
     Returns
     -------
-    Q : ndarray, shape (m, n)
-        Orthonormal basis vectors (Q.T @ Q ≈ I).
-    R : ndarray, shape (n, n)
-        Upper triangular matrix.
+    x_traj : ndarray, shape (n, nt)
+        State trajectory.
+    Q_history : ndarray, shape (n, n, nt)
+        History of orthonormal perturbation vectors.
+    R_history : ndarray, shape (n, n, nt)
+        History of upper triangular matrices from QR.
+    LE : ndarray, shape (n,)
+        Final Lyapunov exponents.
+    LE_history : ndarray, shape (n, nt)
+        Evolution of Lyapunov exponents over time.
     """
-    m, n = A.shape
-    Q = np.zeros((m, n))
-    R = np.zeros((n, n))
-    V = A.copy()
+    dt = t[1] - t[0]
+    nt = len(t)
+    n = trajectory.shape[0]
 
-    for j in range(n):
-        # Norm of column j
-        norm = np.sqrt(np.sum(V[:, j] * V[:, j]))
-        Q[:, j] = V[:, j] / norm
-        R[j, j] = norm
-        # Orthogonalize remaining columns
-        for k in range(j + 1, n):
-            R[j, k] = np.dot(Q[:, j], V[:, k])
-            V[:, k] = V[:, k] - R[j, k] * Q[:, j]
+    # Allocate arrays
+    Q_history = np.empty((n, n, nt))
+    R_history = np.empty((n, n, nt))
+    LE_history = np.empty((n, nt))
+    
 
-    return Q, R
+    # Initial perturbations: identity
+    Q = np.eye(n)
+    Q_history[:, :, 0] = Q
+    R_history[:, :, 0] = np.eye(n)
+    LE_history[:, 0] = 0.0
+    log_sums = 0.
+
+    # Time integration loop
+    for i in range(nt - 1):
+        # Integrate state + variational system
+        _, Q = var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+
+        # Re-orthonormalize perturbations (keep MGS as requested)
+        Q, R = _qr_mgs(Q)
+        Q_history[:, :, i + 1] = Q
+        R_history[:, :, i + 1] = R
+
+        # Update cumulative Lyapunov sums
+        log_sums += np.log(np.abs(np.diag(R)))
+        LE_history[:, i + 1] = log_sums / ((i + 1) * dt)
+
+    return Q_history, R_history, LE_history[:,-1], LE_history
+
+
+@njit(cache=True)
+def _qr_mgs(Q: np.ndarray):
+    """
+    Modified Gram-Schmidt orthogonalization
+    Numba-optimized: no non-contiguous dot products.
+    """
+    n, m = Q.shape
+    R = np.zeros((m, m))
+    Q_out = np.zeros((n, m))
+
+    for k in range(m):
+        # Copy the k-th column
+        v = Q[:, k].copy()
+
+        # Orthogonalize against previous vectors
+        for j in range(k):
+            s = 0.0
+            for i in range(n):           # manual dot product
+                s += Q_out[i, j] * v[i]
+            R[j, k] = s
+
+            for i in range(n):           # v -= R[j,k] * Q_out[:,j]
+                v[i] -= s * Q_out[i, j]
+
+        # Norm of v
+        norm_v = 0.0
+        for i in range(n):
+            norm_v += v[i] * v[i]
+        norm_v = np.sqrt(norm_v)
+
+        R[k, k] = norm_v
+
+        if norm_v > 0.0:
+            inv_norm = 1.0 / norm_v
+            for i in range(n):
+                Q_out[i, k] = v[i] * inv_norm
+
+    return Q_out, R
+
+def clvs(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
+    """
+    Compute the Covariant Lyapunov Vectors (CLVs) using the method of
+    Ginelli et al. (PRL, 2007).
+
+    Parameters
+    ----------
+    Q : ndarray, shape (n_dim, n_lyap, n_time)
+        Timeseries of Gram–Schmidt vectors.
+    R : ndarray, shape (n_lyap, n_lyap, n_time)
+        Timeseries of upper-triangular R matrices from QR decomposition.
+
+    Returns
+    -------
+    V : ndarray, shape (n_dim, n_lyap, n_time)
+        Covariant Lyapunov Vectors (CLVs). Each slice V[:, :, t] contains
+        the CLVs at time index t.
+    """
+    n_dim, n_lyap, n_time = Q.shape
+
+    # CLV coordinates in GS basis
+    C = np.empty((n_lyap, n_lyap, n_time), dtype=Q.dtype)
+    D = np.empty((n_lyap, n_time), dtype=Q.dtype)  # norms of CLVs in GS basis
+    V = np.empty((n_dim, n_lyap, n_time), dtype=Q.dtype)
+
+    # Initialize last step
+    C[:, :, -1] = np.eye(n_lyap)
+    D[:, -1] = np.ones(n_lyap)
+    V[:, :, -1] = Q[:, :, -1] @ C[:, :, -1]
+
+    # Backward iteration
+    for i in reversed(range(n_time - 1)):
+        # Solve R_i * C_i = C_{i+1}
+        C_next = scipy.linalg.solve_triangular(
+            R[:, :, i], C[:, :, i + 1], lower=False, overwrite_b=True, check_finite=False
+        )
+        C[:, :, i], D[:, i] = _normalize_columns(C_next)
+
+        # Compute the CLVs 
+        V[:, :, i] = Q[:, :, i] @ C[:, :, i]
+
+    # Normalize CLVs across (lyap, time) without using 2D helper
+    V, _ = _normalize_columns(V)
+
+    return V
 
 def _normalize_columns(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -283,7 +288,7 @@ def _normalize_columns(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     norms = np.linalg.norm(A, axis=0, keepdims=True)
     norms_safe = np.where(norms == 0.0, 1.0, norms)
     return A / norms_safe, norms
-
+    
 def compute_angles(V1: np.ndarray, V2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute the angles between two vectors in V1 and V2.
@@ -304,6 +309,7 @@ def compute_angles(V1: np.ndarray, V2: np.ndarray) -> Tuple[np.ndarray, np.ndarr
     cos_thetas = np.einsum('ij,ij->j', V1, V2) 
     thetas     = np.arccos(cos_thetas)
     return cos_thetas, thetas
+
 
 def principal_angles(V1: np.ndarray, V2: np.ndarray) -> np.ndarray:
     """
