@@ -3,61 +3,7 @@ import scipy.linalg
 from numba import njit
 from typing import Callable, Tuple
 
-@njit(cache=True)
-def var_rk4_step(
-    f: Callable,
-    Df: Callable,
-    t: float,
-    x: np.ndarray,
-    V: np.ndarray,
-    dt: float,
-    *args
-) -> np.ndarray:
-    """
-    Perform a single 4th-order Runge–Kutta step for both the state and the
-    associated variational equation.
 
-    Parameters
-    ----------
-    f : callable
-        ODE function f(t, x, *args) returning dx/dt as ndarray.
-    Df : callable
-        Jacobian function Df(t, x, *args) returning the matrix ∂f/∂x.
-    t : float
-        Current time.
-    x : ndarray, shape (n,)
-        Current state vector.
-    V : ndarray, shape (n, m)
-        Current variational matrix (e.g., tangent dynamics).
-    dt : float
-        Step size.
-    *args : tuple
-        Extra parameters passed to both f and Df.
-
-    Returns
-    -------
-    x_next : ndarray, shape (n,)
-        State at t + dt.
-    V_next : ndarray, shape (n, m)
-        Variational matrix at t + dt.
-    """
-    # ---- State integration ----
-    k1 = dt * f(t, x, *args)
-    k2 = dt * f(t + 0.5*dt, x + 0.5*k1, *args)
-    k3 = dt * f(t + 0.5*dt, x + 0.5*k2, *args)
-    k4 = dt * f(t + dt,     x + k3,     *args)
-
-    # ---- Variational integration ----
-    K1 = dt * (Df(t, x, *args) @ V)
-    K2 = dt * (Df(t + 0.5*dt, x + 0.5*k1, *args) @ (V + 0.5*K1))
-    K3 = dt * (Df(t + 0.5*dt, x + 0.5*k2, *args) @ (V + 0.5*K2))
-    K4 = dt * (Df(t + dt,     x + k3,     *args) @ (V + K3))
-
-    # ---- Combine increments ----
-    x_next = x + (k1 + 2*k2 + 2*k3 + k4) / 6.0
-    V_next = V + (K1 + 2*K2 + 2*K3 + K4) / 6.0
-
-    return x_next, V_next
 
 def lyap_analysis(
     f: Callable,
@@ -115,11 +61,11 @@ def _compute_lyap_outputs(
     """
     Helper that runs the Lyapunov integration and CLV computation.
     """
-    Q_history, R_history, LE, LE_history = lyap_int(f, Df, trajectory, t, *args)
+    Q_history, R_history, LE, LE_history = _lyap_int(f, Df, trajectory, t, *args)
     CLV_history = clvs(Q_history, R_history)
     return Q_history, R_history, LE, LE_history, CLV_history
 
-def lyap_int(f: Callable,Df: Callable,trajectory: np.ndarray,t: np.ndarray,*args) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def _lyap_int(f: Callable,Df: Callable,trajectory: np.ndarray,t: np.ndarray,*args) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute the Lyapunov exponents of a dynamical system
     using variational equations and QR re-orthonormalization.
@@ -170,7 +116,7 @@ def lyap_int(f: Callable,Df: Callable,trajectory: np.ndarray,t: np.ndarray,*args
     # Time integration loop
     for i in range(nt - 1):
         # Integrate state + variational system
-        _, Q = var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+        _, Q = _var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
 
         # Re-orthonormalize perturbations (keep MGS as requested)
         Q, R = _qr_mgs(Q)
@@ -183,6 +129,44 @@ def lyap_int(f: Callable,Df: Callable,trajectory: np.ndarray,t: np.ndarray,*args
 
     return Q_history, R_history, LE_history[:,-1], LE_history
 
+def _lyap_int_k_step(
+    f: Callable,
+    Df: Callable,
+    trajectory: np.ndarray,
+    t: np.ndarray,
+    k_step: int,
+    *args
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    dt = t[1] - t[0]
+    nt = t.size
+    n = trajectory.shape[0]
+    n_step = ((nt - 2) // k_step) + 1
+
+    Q_history = np.empty((n, n, n_step), dtype=float)
+    R_history = np.empty((n, n, n_step), dtype=float)
+    LE_history = np.empty((n, n_step), dtype=float)
+
+    Q = np.eye(n, dtype=float)
+    log_sums = np.zeros(n, dtype=float)
+
+    Q_history[:, :, 0] = Q
+    R_history[:, :, 0] = np.eye(n, dtype=float)
+    LE_history[:, 0] = 0.0
+
+    j = 0
+
+    for i in range(nt - 1):
+        _, Q = _var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+
+        if ((i + 1) % k_step == 0):
+            Q, R = _qr_mgs(Q)
+            Q_history[:, :, j + 1] = Q
+            R_history[:, :, j + 1] = R
+            log_sums += np.log(np.abs(np.diag(R)))
+            LE_history[:, j + 1] = log_sums / ((j + 1) * k_step * dt)
+            j += 1
+
+    return Q_history, R_history, LE_history[:,-1], LE_history
 
 @njit(cache=True)
 def _qr_mgs(Q: np.ndarray):
@@ -222,6 +206,64 @@ def _qr_mgs(Q: np.ndarray):
                 Q_out[i, k] = v[i] * inv_norm
 
     return Q_out, R
+
+
+
+@njit(cache=True)
+def _var_rk4_step(
+    f: Callable,
+    Df: Callable,
+    t: float,
+    x: np.ndarray,
+    V: np.ndarray,
+    dt: float,
+    *args
+) -> np.ndarray:
+    """
+    Perform a single 4th-order Runge–Kutta step for both the state and the
+    associated variational equation.
+
+    Parameters
+    ----------
+    f : callable
+        ODE function f(t, x, *args) returning dx/dt as ndarray.
+    Df : callable
+        Jacobian function Df(t, x, *args) returning the matrix ∂f/∂x.
+    t : float
+        Current time.
+    x : ndarray, shape (n,)
+        Current state vector.
+    V : ndarray, shape (n, m)
+        Current variational matrix (e.g., tangent dynamics).
+    dt : float
+        Step size.
+    *args : tuple
+        Extra parameters passed to both f and Df.
+
+    Returns
+    -------
+    x_next : ndarray, shape (n,)
+        State at t + dt.
+    V_next : ndarray, shape (n, m)
+        Variational matrix at t + dt.
+    """
+    # ---- State integration ----
+    k1 = dt * f(t, x, *args)
+    k2 = dt * f(t + 0.5*dt, x + 0.5*k1, *args)
+    k3 = dt * f(t + 0.5*dt, x + 0.5*k2, *args)
+    k4 = dt * f(t + dt,     x + k3,     *args)
+
+    # ---- Variational integration ----
+    K1 = dt * (Df(t, x, *args) @ V)
+    K2 = dt * (Df(t + 0.5*dt, x + 0.5*k1, *args) @ (V + 0.5*K1))
+    K3 = dt * (Df(t + 0.5*dt, x + 0.5*k2, *args) @ (V + 0.5*K2))
+    K4 = dt * (Df(t + dt,     x + k3,     *args) @ (V + K3))
+
+    # ---- Combine increments ----
+    x_next = x + (k1 + 2*k2 + 2*k3 + k4) / 6.0
+    V_next = V + (K1 + 2*K2 + 2*K3 + K4) / 6.0
+
+    return x_next, V_next
 
 def clvs(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     """

@@ -127,6 +127,45 @@ def _lyap_int(f: Callable, Df: Callable, trajectory: np.ndarray, t: np.ndarray, 
 
     return Q_history, R_history, LE_history[:,-1], LE_history
 
+def _lyap_int_k_step(
+    f: Callable,
+    Df: Callable,
+    trajectory: np.ndarray,
+    t: np.ndarray,
+    k_step: int,
+    *args
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    dt = t[1] - t[0]
+    nt = t.size
+    n = trajectory.shape[0]
+    n_step = ((nt - 2) // k_step) + 1
+
+    Q_history = np.empty((n, n, n_step), dtype=float)
+    R_history = np.empty((n, n, n_step), dtype=float)
+    LE_history = np.empty((n, n_step), dtype=float)
+
+    Q = np.eye(n, dtype=float)
+    log_sums = np.zeros(n, dtype=float)
+
+    Q_history[:, :, 0] = Q
+    R_history[:, :, 0] = np.eye(n, dtype=float)
+    LE_history[:, 0] = 0.0
+
+    j = 0
+
+    for i in range(nt - 1):
+        _, Q = _var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+
+        if ((i + 1) % k_step == 0):
+            Q, R = _qr_mgs(Q)
+            Q_history[:, :, j + 1] = Q
+            R_history[:, :, j + 1] = R
+            log_sums += np.log(np.abs(np.diag(R)))
+            LE_history[:, j + 1] = log_sums / ((j + 1) * k_step * dt)
+            j += 1
+
+    return Q_history, R_history, LE_history[:,-1], LE_history
+
 
 def _clvs(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     """
