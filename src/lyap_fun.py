@@ -156,7 +156,7 @@ def _lyap_int_k_step(
     dt = t[1] - t[0]
     nt = t.size
     n = trajectory.shape[0]
-    n_step = ((nt - 2) // k_step) + 1
+    n_step = ((nt - 1) // k_step) + 1
 
     Q_history = np.empty((n, n, n_step), dtype=float)
     R_history = np.empty((n, n, n_step), dtype=float)
