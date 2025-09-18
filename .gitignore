@@ -2,3 +2,6 @@
 __pycache__/
 *.py[cod]
 .DS_Store
+*.pyc
+*.pyo
+.ipynb_checkpoints/
