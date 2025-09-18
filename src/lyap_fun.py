@@ -7,11 +7,13 @@ def lyap_analysis(
     Df: Callable,
     trajectory: np.ndarray,
     t: np.ndarray,
-    *args
+    *args,
+    k_step: int = 1,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Run Lyapunov-exponent integration and compute the associated CLVs.
     (Type and dimensionality checks included.)
+    Set `k_step` > 1 to use the k-step variational integrator.
     """
     if not callable(f):
         raise TypeError("f must be callable.")
@@ -30,6 +32,11 @@ def lyap_analysis(
     if t.size < 2:
         raise ValueError("t must contain at least two time points.")
 
+    if not isinstance(k_step, int):
+        raise TypeError("k_step must be an integer.")
+    if k_step < 1:
+        raise ValueError("k_step must be at least 1.")
+
     n, nt = trajectory.shape
     if nt != t.size:
         raise ValueError(
@@ -37,16 +44,19 @@ def lyap_analysis(
         )
 
     Q_history, R_history, LE, LE_history, CLV_history = _compute_lyap_outputs(
-        f, Df, trajectory, t, *args
+        f, Df, trajectory, t, *args, k_step=k_step
     )
 
-    if CLV_history.shape != (n, n, nt):
+    expected_time_samples = Q_history.shape[-1]
+    if CLV_history.shape != (n, n, expected_time_samples):
         raise RuntimeError(
             "CLV history has inconsistent shape: "
-            f"expected {(n, n, nt)}, got {CLV_history.shape}."
+            f"expected {(n, n, expected_time_samples)}, got {CLV_history.shape}."
         )
 
     return Q_history, R_history, LE, LE_history, CLV_history
+
+
 
 
 def _compute_lyap_outputs(
@@ -54,14 +64,25 @@ def _compute_lyap_outputs(
     Df: Callable,
     trajectory: np.ndarray,
     t: np.ndarray,
-    *args
+    *args,
+    k_step: int = 1,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Helper that runs the Lyapunov integration and CLV computation.
+    Selects between standard and k-step integrators based on `k_step`.
     """
-    Q_history, R_history, LE, LE_history = _lyap_int(f, Df, trajectory, t, *args)
+    if k_step > 1:
+        Q_history, R_history, LE, LE_history = _lyap_int_k_step(
+            f, Df, trajectory, t, k_step, *args
+        )
+    else:
+        Q_history, R_history, LE, LE_history = _lyap_int(
+            f, Df, trajectory, t, *args
+        )
     CLV_history = _clvs(Q_history, R_history)
     return Q_history, R_history, LE, LE_history, CLV_history
+
+
 
 def _lyap_int(f: Callable, Df: Callable, trajectory: np.ndarray, t: np.ndarray, *args) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -370,35 +391,65 @@ def principal_angles(V1: np.ndarray, V2: np.ndarray) -> np.ndarray:
 
     return theta
 
-def compute_ICLE(jacobian_function: Callable, solution: np.ndarray, time: np.ndarray, CLV_history: np.ndarray, *args) -> np.ndarray:
+def compute_ICLE(
+    jacobian_function: Callable,
+    solution: np.ndarray,
+    time: np.ndarray,
+    CLV_history: np.ndarray,
+    *args,
+    k_step: int = 1,
+) -> np.ndarray:
     """
     Compute instantaneous covariant Lyapunov exponents (ICLEs) for one or more
     CLVs along a trajectory.
-
-    Parameters
-    ----------
-    jacobian_function : Callable
-        Function that returns the Jacobian at a given time/state:
-        ``jacobian_function(t: float, x: ndarray, *args) -> ndarray (n, n)``.
-    solution : ndarray, shape (n, nt)
-        State trajectory where columns are states at each time index.
-    time : ndarray, shape (nt,)
-        Time grid corresponding to the columns of ``solution``.
-    CLV_history : ndarray, shape (n, m, nt)
-        Time history of m Covariant Lyapunov Vectors v_l(t). Each vector is in
-        the first dimension, with m vectors over nt time steps.
-    *args : Any
-        Extra parameters forwarded to ``jacobian_function``.    
-    Returns
-    -------
-    ndarray, shape (m, nt)
-        ICLE time series for each CLV: ICLE_l(t) = v_l(t)^T J(t) v_l(t).
-        If v_l(t) are unit-norm, these are instantaneous growth rates.
     """
-    n, m, nt = CLV_history.shape
-    VTJV = np.empty((m, nt), dtype=float)
-    for i in range(len(time)):
-        J = jacobian_function(time[i], solution[:, i], *args)
-        VTJV[:, i] = np.einsum("ik,ij,jk->k", CLV_history[:, :, i], J, CLV_history[:, :, i]) # (m,)
-    
+    if not isinstance(k_step, int):
+        raise TypeError("k_step must be an integer.")
+    if k_step < 1:
+        raise ValueError("k_step must be at least 1.")
+    if time.ndim != 1:
+        raise ValueError("time must be one-dimensional.")
+    if solution.ndim != 2:
+        raise ValueError("solution must be two-dimensional.")
+    if CLV_history.ndim != 3:
+        raise ValueError("CLV_history must be three-dimensional.")
+
+    n_state, n_time = solution.shape
+    n_clv_state, m, n_samples = CLV_history.shape
+    if n_state != n_clv_state:
+        raise ValueError("solution and CLV_history must share the same state dimension.")
+    if n_time != time.size:
+        raise ValueError("solution and time must share the same number of samples.")
+    if n_samples == 0:
+        raise ValueError("CLV_history must contain at least one time sample.")
+
+    sample_indices = np.arange(0, k_step * n_samples, k_step, dtype=int)
+    if sample_indices.size != n_samples:
+        raise RuntimeError("Unexpected number of samples inferred from CLV_history.")
+    if sample_indices[-1] >= n_time:
+        raise ValueError(
+            "CLV history length is incompatible with the provided solution/time for this k_step."
+        )
+
+    states = solution[:, sample_indices]
+    times = time[sample_indices]
+
+    return _compute_icle_series(jacobian_function, states, times, CLV_history, *args)
+
+
+def _compute_icle_series(
+    jacobian_function: Callable,
+    sampled_states: np.ndarray,
+    sampled_times: np.ndarray,
+    CLV_history: np.ndarray,
+    *args,
+) -> np.ndarray:
+    """Helper that evaluates J(t)xv and assembles the ICLE time series."""
+    _, m, n_samples = CLV_history.shape
+    VTJV = np.empty((m, n_samples), dtype=float)
+    for idx in range(n_samples):
+        J = jacobian_function(sampled_times[idx], sampled_states[:, idx], *args)
+        VTJV[:, idx] = np.einsum(
+            "ik,ij,jk->k", CLV_history[:, :, idx], J, CLV_history[:, :, idx]
+        )
     return VTJV
