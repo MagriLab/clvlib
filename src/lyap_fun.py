@@ -56,9 +56,6 @@ def lyap_analysis(
 
     return Q_history, R_history, LE, LE_history, CLV_history
 
-
-
-
 def _compute_lyap_outputs(
     f: Callable,
     Df: Callable,
