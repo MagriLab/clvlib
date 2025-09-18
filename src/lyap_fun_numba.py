@@ -464,7 +464,7 @@ def compute_ICLE(
 
     return _compute_icle_series(jacobian_function, states, times, CLV_history, *args)
 
-@njit(cache=True)
+
 def _compute_icle_series(
     jacobian_function: Callable,
     sampled_states: np.ndarray,
