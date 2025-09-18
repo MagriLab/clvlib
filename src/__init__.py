@@ -1,23 +1,32 @@
-"""clvlib: Lyapunov exponents and CLV utilities.
+"""clvlib: Lyapunov exponents and Covariant Lyapunov Vector utilities."""
 
-This package provides routines to integrate variational equations,
-compute Lyapunov exponents, and compute Covariant Lyapunov Vectors
-via the Ginelli method.
-"""
-
-from .lyap_fun import (
-    varRK4_step,
-    LE_int,
-    compute_CLV,
-    qr_mgs,
+from . import numpy as numpy_backend
+from .numpy import (
+    lyap_analysis,
+    compute_angles,
+    principal_angles,
+    compute_ICLE,
 )
 
+numpy = numpy_backend
+
 __all__ = [
-    "varRK4_step",
-    "LE_int",
-    "compute_CLV",
-    "qr_mgs",
+    "lyap_analysis",
+    "compute_angles",
+    "principal_angles",
+    "compute_ICLE",
+    "numpy",
 ]
 
-__version__ = "0.1.0"
+try:
+    from . import numba as numba_backend
+except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
+    if exc.name == "numba":
+        numba = None
+    else:  # importing clvlib.numba failed for another reason
+        raise
+else:
+    numba = numba_backend
+    __all__.append("numba")
 
+__version__ = "0.1.0"
