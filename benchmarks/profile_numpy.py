@@ -1,0 +1,44 @@
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+import numpy as np
+from clvlib.numpy import lyap_analysis, compute_ICLE
+
+def lorenz96(_: float, x: np.ndarray, forcing: float) -> np.ndarray:
+    """Lorenz-96 vector field (pure NumPy)."""
+    xp1 = np.roll(x, -1)
+    xm2 = np.roll(x, 2)
+    xm1 = np.roll(x, 1)
+    return (xp1 - xm2) * xm1 - x + forcing
+
+
+def lorenz96_jacobian(_: float, x: np.ndarray, forcing: float) -> np.ndarray:  # noqa: ARG001
+    """Jacobian matrix of the Lorenz-96 system (pure NumPy)."""
+    k = x.size
+    jac = np.zeros((k, k), dtype=np.float64)
+
+    idx = np.arange(k)
+    im1 = (idx - 1) % k
+    im2 = (idx - 2) % k
+    ip1 = (idx + 1) % k
+
+    jac[idx, im1] = x[ip1] - x[im2]
+    jac[idx, ip1] = x[im1]
+    jac[idx, im2] = -x[im1]
+    jac[idx, idx] = -1.0
+    return jac
+
+
+def main():
+    data = np.load("benchmarks/lorenz96_solution.npz", allow_pickle=True)
+    t_loaded = data["t"]
+    x_loaded = data["x"]
+    x0 = np.asarray(x_loaded[0], dtype=float)
+    F = 8
+
+    trajectory, Q_history, R_history, LE, LE_history, CLV_history = lyap_analysis(
+        lorenz96, lorenz96_jacobian, x0, t_loaded, F, k_step=1
+    )
+    ICLEs = compute_ICLE(lorenz96_jacobian, trajectory, t_loaded, CLV_history)
+
+if __name__ == "__main__":
+    main()
