@@ -2,28 +2,30 @@ import numpy as np
 import scipy.linalg
 from typing import Callable, Tuple
 
+
 def lyap_analysis(
     f: Callable,
     Df: Callable,
-    trajectory: np.ndarray,
+    x0: np.ndarray,
     t: np.ndarray,
     *args,
     k_step: int = 1,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Run Lyapunov-exponent integration and compute the associated CLVs.
-    (Type and dimensionality checks included.)
-    Set `k_step` > 1 to use the k-step variational integrator.
+
+    The state trajectory is integrated internally from the initial condition ``x0``
+    using a fixed-step RK4 scheme that matches the variational update.
     """
     if not callable(f):
         raise TypeError("f must be callable.")
     if not callable(Df):
         raise TypeError("Df must be callable.")
 
-    if not isinstance(trajectory, np.ndarray):
-        raise TypeError("trajectory must be a numpy.ndarray.")
-    if trajectory.ndim != 2:
-        raise ValueError("trajectory must have shape (n, nt).")
+    if not isinstance(x0, np.ndarray):
+        raise TypeError("x0 must be a numpy.ndarray.")
+    if x0.ndim != 1:
+        raise ValueError("x0 must be one-dimensional.")
 
     if not isinstance(t, np.ndarray):
         raise TypeError("t must be a numpy.ndarray.")
@@ -37,14 +39,10 @@ def lyap_analysis(
     if k_step < 1:
         raise ValueError("k_step must be at least 1.")
 
-    n, nt = trajectory.shape
-    if nt != t.size:
-        raise ValueError(
-            f"trajectory has {nt} time samples but t has {t.size} entries."
-        )
+    n = x0.size
 
-    Q_history, R_history, LE, LE_history, CLV_history = _compute_lyap_outputs(
-        f, Df, trajectory, t, *args, k_step=k_step
+    trajectory, Q_history, R_history, LE, LE_history, CLV_history = _compute_lyap_outputs(
+        f, Df, x0, t, *args, k_step=k_step
     )
 
     expected_time_samples = Q_history.shape[-1]
@@ -53,56 +51,55 @@ def lyap_analysis(
             "CLV history has inconsistent shape: "
             f"expected {(n, n, expected_time_samples)}, got {CLV_history.shape}."
         )
+    if trajectory.shape != (n, t.size):
+        raise RuntimeError(
+            "Trajectory has inconsistent shape: "
+            f"expected {(n, t.size)}, got {trajectory.shape}."
+        )
 
-    return Q_history, R_history, LE, LE_history, CLV_history
+    return trajectory, Q_history, R_history, LE, LE_history, CLV_history
+
 
 def _compute_lyap_outputs(
     f: Callable,
     Df: Callable,
-    trajectory: np.ndarray,
+    x0: np.ndarray,
     t: np.ndarray,
     *args,
     k_step: int = 1,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Helper that runs the Lyapunov integration and CLV computation.
-    Selects between standard and k-step integrators based on `k_step`.
+    Selects between standard and k-step integrators based on ``k_step``.
     """
     if k_step > 1:
-        Q_history, R_history, LE, LE_history = _lyap_int_k_step(
-            f, Df, trajectory, t, k_step, *args
+        trajectory, Q_history, R_history, LE, LE_history = _lyap_int_k_step(
+            f, Df, x0, t, k_step, *args
         )
     else:
-        Q_history, R_history, LE, LE_history = _lyap_int(
-            f, Df, trajectory, t, *args
+        trajectory, Q_history, R_history, LE, LE_history = _lyap_int(
+            f, Df, x0, t, *args
         )
     CLV_history = _clvs(Q_history, R_history)
-    return Q_history, R_history, LE, LE_history, CLV_history
+    return trajectory, Q_history, R_history, LE, LE_history, CLV_history
 
 
 
-def _lyap_int(f: Callable, Df: Callable, trajectory: np.ndarray, t: np.ndarray, *args) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+
+def _lyap_int(
+    f: Callable,
+    Df: Callable,
+    x0: np.ndarray,
+    t: np.ndarray,
+    *args,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Compute the Lyapunov exponents of a dynamical system
-    using variational equations and QR re-orthonormalization.
-
-    Parameters
-    ----------
-    f : Callable
-        System dynamics, f(t, x, *args) -> dx/dt.
-    Df : Callable
-        Jacobian of the system, Df(t, x, *args) -> ∂f/∂x.
-    x0 : ndarray, shape (n,)
-        Initial state vector.
-    t : ndarray, shape (nt,)
-        Time grid for integration.
-    *args : tuple
-        Extra parameters passed to f and Df.
+    Compute Lyapunov exponents using variational equations and QR re-orthonormalization.
 
     Returns
     -------
-    x_traj : ndarray, shape (n, nt)
-        State trajectory.
+    trajectory : ndarray, shape (n, nt)
+        Integrated state trajectory.
     Q_history : ndarray, shape (n, n, nt)
         History of orthonormal perturbation vectors.
     R_history : ndarray, shape (n, n, nt)
@@ -114,75 +111,81 @@ def _lyap_int(f: Callable, Df: Callable, trajectory: np.ndarray, t: np.ndarray, 
     """
     dt = t[1] - t[0]
     nt = len(t)
-    n = trajectory.shape[0]
+    n = x0.size
+    dtype = np.result_type(x0.dtype, np.float64)
 
-    # Allocate arrays
-    Q_history = np.empty((n, n, nt))
-    R_history = np.empty((n, n, nt))
-    LE_history = np.empty((n, nt))
-    
+    trajectory = np.empty((n, nt), dtype=dtype)
+    Q_history = np.empty((n, n, nt), dtype=dtype)
+    R_history = np.empty((n, n, nt), dtype=dtype)
+    LE_history = np.empty((n, nt), dtype=dtype)
 
-    # Initial perturbations: identity
-    Q = np.eye(n)
+    x = np.array(x0, dtype=dtype, copy=True)
+    trajectory[:, 0] = x
+
+    Q = np.eye(n, dtype=dtype)
     Q_history[:, :, 0] = Q
-    R_history[:, :, 0] = np.eye(n)
+    R_history[:, :, 0] = np.eye(n, dtype=dtype)
     LE_history[:, 0] = 0.0
-    log_sums = 0.
+    log_sums = np.zeros(n, dtype=dtype)
 
-    # Time integration loop
     for i in range(nt - 1):
-        # Integrate state + variational system
-        _, Q = _var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+        x, Q = _var_rk4_step(f, Df, t[i], x, Q, dt, *args)
+        trajectory[:, i + 1] = x
 
-        # Re-orthonormalize perturbations (keep MGS as requested)
         Q, R = _qr_mgs(Q)
         Q_history[:, :, i + 1] = Q
         R_history[:, :, i + 1] = R
 
-        # Update cumulative Lyapunov sums
         log_sums += np.log(np.abs(np.diag(R)))
         LE_history[:, i + 1] = log_sums / ((i + 1) * dt)
 
-    return Q_history, R_history, LE_history[:,-1], LE_history
+    return trajectory, Q_history, R_history, LE_history[:, -1], LE_history
+
 
 def _lyap_int_k_step(
     f: Callable,
     Df: Callable,
-    trajectory: np.ndarray,
+    x0: np.ndarray,
     t: np.ndarray,
     k_step: int,
-    *args
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    *args,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dt = t[1] - t[0]
     nt = t.size
-    n = trajectory.shape[0]
+    n = x0.size
+    dtype = np.result_type(x0.dtype, np.float64)
     n_step = ((nt - 1) // k_step) + 1
 
-    Q_history = np.empty((n, n, n_step), dtype=float)
-    R_history = np.empty((n, n, n_step), dtype=float)
-    LE_history = np.empty((n, n_step), dtype=float)
+    trajectory = np.empty((n, nt), dtype=dtype)
+    Q_history = np.empty((n, n, n_step), dtype=dtype)
+    R_history = np.empty((n, n, n_step), dtype=dtype)
+    LE_history = np.empty((n, n_step), dtype=dtype)
 
-    Q = np.eye(n, dtype=float)
-    log_sums = np.zeros(n, dtype=float)
+    x = np.array(x0, dtype=dtype, copy=True)
+    trajectory[:, 0] = x
+
+    Q = np.eye(n, dtype=dtype)
+    log_sums = np.zeros(n, dtype=dtype)
 
     Q_history[:, :, 0] = Q
-    R_history[:, :, 0] = np.eye(n, dtype=float)
+    R_history[:, :, 0] = np.eye(n, dtype=dtype)
     LE_history[:, 0] = 0.0
 
     j = 0
 
     for i in range(nt - 1):
-        _, Q = _var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+        x, Q = _var_rk4_step(f, Df, t[i], x, Q, dt, *args)
+        trajectory[:, i + 1] = x
 
-        if ((i + 1) % k_step == 0):
-            Q, R = _qr_mgs(Q)
+        if (i + 1) % k_step == 0:
+            Q, R = np.linalg.qr(Q)
             Q_history[:, :, j + 1] = Q
             R_history[:, :, j + 1] = R
             log_sums += np.log(np.abs(np.diag(R)))
             LE_history[:, j + 1] = log_sums / ((j + 1) * k_step * dt)
             j += 1
 
-    return Q_history, R_history, LE_history[:,-1], LE_history
+    return trajectory, Q_history, R_history, LE_history[:, -1], LE_history
 
 
 def _clvs(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
