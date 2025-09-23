@@ -10,7 +10,7 @@ def L96(x, t, F=8):
 
 def main():
     # These are our constants
-    N = 3  # Number of variables
+    N = 50  # Number of variables
     F = 8  # Forcing
 
     x0 = F * np.ones(N)  # Initial state (equilibrium)
