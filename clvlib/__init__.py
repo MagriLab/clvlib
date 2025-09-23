@@ -1,20 +1,33 @@
-"""clvlib: Lyapunov exponents and Covariant Lyapunov Vector utilities."""
+"""clvlib: Lyapunov exponents and Covariant Lyapunov Vector utilities.
+
+Public API mirrors the NumPy backend for convenience while keeping the
+module split clean. The Numba backend (if available) is exposed as
+``clvlib.numba`` without modifying its contents.
+"""
 
 from . import numpy as numpy_backend
 from .numpy import (
     lyap_analysis,
+    lyap_exp,
     compute_angles,
     principal_angles,
     compute_ICLE,
+    resolve_stepper,
+    register_stepper,
+    VariationalStepper,
 )
 
 numpy = numpy_backend
 
 __all__ = [
     "lyap_analysis",
+    "lyap_exp",
     "compute_angles",
     "principal_angles",
     "compute_ICLE",
+    "resolve_stepper",
+    "register_stepper",
+    "VariationalStepper",
     "numpy",
 ]
 
