@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.linalg
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 
 def lyap_analysis(
     f: Callable,
@@ -9,12 +9,75 @@ def lyap_analysis(
     t: np.ndarray,
     *args,
     k_step: int = 1,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Run Lyapunov-exponent integration and compute the associated CLVs.
     (Type and dimensionality checks included.)
     Set `k_step` > 1 to use the k-step variational integrator.
     """
+    n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
+
+    Q_history, LE, LE_history, CLV_history = _compute_lyap_outputs(
+        f, Df, trajectory, t, *args, k_step=k_step
+    )
+
+    expected_time_samples = Q_history.shape[-1]
+    if CLV_history.shape != (n, n, expected_time_samples):
+        raise RuntimeError(
+            "CLV history has inconsistent shape: "
+            f"expected {(n, n, expected_time_samples)}, got {CLV_history.shape}."
+        )
+
+    return Q_history, LE, LE_history, CLV_history
+
+
+def lyap_exp(
+    f: Callable,
+    Df: Callable,
+    trajectory: np.ndarray,
+    t: np.ndarray,
+    *args,
+    k_step: int = 1,
+    return_backward: bool = False,
+) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Run Lyapunov-exponent integration without computing CLVs.
+
+    Parameters
+    ----------
+    f, Df, trajectory, t
+        Same as in ``lyap_analysis``.
+    return_backward : bool, optional
+        If True, also return the backward Lyapunov vectors (Q_history).
+
+    Returns
+    -------
+    LE : ndarray
+        Final Lyapunov exponents.
+    LE_history : ndarray
+        Time history of the Lyapunov exponents.
+    Q_history : ndarray, optional
+        Returned when ``return_backward`` is True.
+    """
+    _validate_lyap_inputs(f, Df, trajectory, t, k_step)
+
+    Q_history, _, LE, LE_history = _run_variational_integrator(
+        f, Df, trajectory, t, *args, k_step=k_step
+    )
+
+    if return_backward:
+        return LE, LE_history, Q_history
+
+    return LE, LE_history
+
+
+def _validate_lyap_inputs(
+    f: Callable,
+    Df: Callable,
+    trajectory: np.ndarray,
+    t: np.ndarray,
+    k_step: int,
+) -> Tuple[int, int]:
     if not callable(f):
         raise TypeError("f must be callable.")
     if not callable(Df):
@@ -43,18 +106,7 @@ def lyap_analysis(
             f"trajectory has {nt} time samples but t has {t.size} entries."
         )
 
-    Q_history, R_history, LE, LE_history, CLV_history = _compute_lyap_outputs(
-        f, Df, trajectory, t, *args, k_step=k_step
-    )
-
-    expected_time_samples = Q_history.shape[-1]
-    if CLV_history.shape != (n, n, expected_time_samples):
-        raise RuntimeError(
-            "CLV history has inconsistent shape: "
-            f"expected {(n, n, expected_time_samples)}, got {CLV_history.shape}."
-        )
-
-    return Q_history, R_history, LE, LE_history, CLV_history
+    return n, nt
 
 def _compute_lyap_outputs(
     f: Callable,
@@ -63,21 +115,29 @@ def _compute_lyap_outputs(
     t: np.ndarray,
     *args,
     k_step: int = 1,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Helper that runs the Lyapunov integration and CLV computation.
     Selects between standard and k-step integrators based on `k_step`.
     """
-    if k_step > 1:
-        Q_history, R_history, LE, LE_history = _lyap_int_k_step(
-            f, Df, trajectory, t, k_step, *args
-        )
-    else:
-        Q_history, R_history, LE, LE_history = _lyap_int(
-            f, Df, trajectory, t, *args
-        )
+    Q_history, R_history, LE, LE_history = _run_variational_integrator(
+        f, Df, trajectory, t, *args, k_step=k_step
+    )
     CLV_history = _clvs(Q_history, R_history)
-    return Q_history, R_history, LE, LE_history, CLV_history
+    return Q_history, LE, LE_history, CLV_history
+
+
+def _run_variational_integrator(
+    f: Callable,
+    Df: Callable,
+    trajectory: np.ndarray,
+    t: np.ndarray,
+    *args,
+    k_step: int = 1,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    if k_step > 1:
+        return _lyap_int_k_step(f, Df, trajectory, t, k_step, *args)
+    return _lyap_int(f, Df, trajectory, t, *args)
 
 
 def _lyap_int(f: Callable, Df: Callable, trajectory: np.ndarray, t: np.ndarray, *args) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -134,7 +194,7 @@ def _lyap_int(f: Callable, Df: Callable, trajectory: np.ndarray, t: np.ndarray, 
         _, Q = _var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
 
         # Re-orthonormalize perturbations (keep MGS as requested)
-        Q, R = _qr_mgs(Q)
+        Q, R = np.linalg.qr(Q)
         Q_history[:, :, i + 1] = Q
         R_history[:, :, i + 1] = R
 
@@ -206,12 +266,10 @@ def _clvs(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
 
     # CLV coordinates in GS basis
     C = np.empty((n_lyap, n_lyap, n_time), dtype=Q.dtype)
-    D = np.empty((n_lyap, n_time), dtype=Q.dtype)  # norms of CLVs in GS basis
     V = np.empty((n_dim, n_lyap, n_time), dtype=Q.dtype)
 
     # Initialize last step
     C[:, :, -1] = np.eye(n_lyap)
-    D[:, -1] = np.ones(n_lyap)
     V[:, :, -1] = Q[:, :, -1] @ C[:, :, -1]
 
     # Backward iteration
@@ -437,11 +495,20 @@ def _compute_icle_series(
     *args,
 ) -> np.ndarray:
     """Helper that evaluates J(t)xv and assembles the ICLE time series."""
-    _, m, n_samples = CLV_history.shape
-    VTJV = np.empty((m, n_samples), dtype=float)
+    J_history = _compute_jacobian_time_history(jacobian_function, sampled_states, sampled_times, *args)
+    ICLE = np.einsum('ikt,ijt,jkt->kt', CLV_history, J_history, CLV_history)
+    return ICLE
+
+def _compute_jacobian_time_history(
+        jacobian_function: Callable,
+        sampled_states: np.ndarray,
+        sampled_times: np.ndarray,
+        *args
+) -> np.ndarray:
+    """Helper that evaluates J(t) along a sampled trajectory."""
+    n_state, n_samples = sampled_states.shape
+    J_history = np.empty((n_state, n_state, n_samples), dtype=float)
     for idx in range(n_samples):
-        J = jacobian_function(sampled_times[idx], sampled_states[:, idx], *args)
-        VTJV[:, idx] = np.einsum(
-            "ik,ij,jk->k", CLV_history[:, :, idx], J, CLV_history[:, :, idx]
-        )
-    return VTJV
+        J_history[:, :, idx] = jacobian_function(sampled_times[idx], sampled_states[:, idx], *args)
+    
+    return J_history
