@@ -344,6 +344,19 @@ def _var_rk4_step(
 
     return x_next, V_next
 
+def _discrete_var_step(
+    f: Callable,
+    Df: Callable,
+    t: float,
+    x: np.ndarray,
+    V: np.ndarray,
+    *args
+) -> Tuple[np.ndarray, np.ndarray]:
+
+    x_next = f(t, x, *args)
+    V_next = Df(t, x, *args) @ V
+    return x_next, V_next
+
 def _qr_mgs(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     QR decomposition using the Modified Gram–Schmidt algorithm.
