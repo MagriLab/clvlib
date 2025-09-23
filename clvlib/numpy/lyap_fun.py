@@ -28,7 +28,7 @@ def lyap_analysis(
             f"expected {(n, n, expected_time_samples)}, got {CLV_history.shape}."
         )
 
-    return Q_history, LE, LE_history, CLV_history
+    return LE, LE_history, Q_history, CLV_history
 
 
 def lyap_exp(
@@ -38,7 +38,7 @@ def lyap_exp(
     t: np.ndarray,
     *args,
     k_step: int = 1,
-    return_backward: bool = False,
+    return_blv: bool = False,
 ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
     Run Lyapunov-exponent integration without computing CLVs.
@@ -57,7 +57,7 @@ def lyap_exp(
     LE_history : ndarray
         Time history of the Lyapunov exponents.
     Q_history : ndarray, optional
-        Returned when ``return_backward`` is True.
+        Returned when ``return_blv`` is True.
     """
     _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
@@ -65,7 +65,7 @@ def lyap_exp(
         f, Df, trajectory, t, *args, k_step=k_step
     )
 
-    if return_backward:
+    if return_blv:
         return LE, LE_history, Q_history
 
     return LE, LE_history
