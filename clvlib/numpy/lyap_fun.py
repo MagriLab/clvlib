@@ -1,6 +1,78 @@
 import numpy as np
 import scipy.linalg
-from typing import Callable, Tuple, Union
+from typing import Callable, Tuple, Union, Protocol, Dict
+
+
+class VariationalStepper(Protocol):
+    def __call__(
+        self,
+        f: Callable,
+        Df: Callable,
+        t: float,
+        x: np.ndarray,
+        V: np.ndarray,
+        dt: float,
+        *args,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        ...
+
+
+def _var_euler_step(
+    f: Callable,
+    Df: Callable,
+    t: float,
+    x: np.ndarray,
+    V: np.ndarray,
+    dt: float,
+    *args,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Forward Euler step for state and variational system."""
+    k1 = dt * f(t, x, *args)
+    K1 = dt * (Df(t, x, *args) @ V)
+    return x + k1, V + K1
+
+
+def _var_rk2_step(
+    f: Callable,
+    Df: Callable,
+    t: float,
+    x: np.ndarray,
+    V: np.ndarray,
+    dt: float,
+    *args,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Explicit midpoint (RK2) for state and variational system."""
+    k1 = dt * f(t, x, *args)
+    K1 = dt * (Df(t, x, *args) @ V)
+    k2 = dt * f(t + 0.5 * dt, x + 0.5 * k1, *args)
+    K2 = dt * (Df(t + 0.5 * dt, x + 0.5 * k1, *args) @ (V + 0.5 * K1))
+    return x + k2, V + K2
+
+
+_STEPPERS: Dict[str, VariationalStepper] = {}
+
+
+def _resolve_stepper(stepper: Union[str, VariationalStepper, None]) -> VariationalStepper:
+    """Resolve a stepper identifier or callable to a concrete stepper.
+
+    - None or 'rk4' -> fourth-order Runge–Kutta variational stepper
+    - 'rk2' -> explicit midpoint RK2
+    - 'euler' -> forward Euler
+    - 'discrete' -> discrete-time map variational step
+    - callable -> used as-is (must match VariationalStepper signature)
+    """
+    if stepper is None:
+        return _var_rk4_step
+    if isinstance(stepper, str):
+        key = stepper.lower()
+        if key in _STEPPERS:
+            return _STEPPERS[key]
+        if key == "rk4":
+            return _var_rk4_step
+        raise ValueError(f"Unknown stepper '{stepper}'. Valid: {list(_STEPPERS.keys()) + ['rk4']}")
+    if callable(stepper):
+        return stepper
+    raise TypeError("stepper must be a string, callable, or None")
 
 def lyap_analysis(
     f: Callable,
@@ -9,6 +81,7 @@ def lyap_analysis(
     t: np.ndarray,
     *args,
     k_step: int = 1,
+    stepper: Union[str, VariationalStepper, None] = "rk4",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Run Lyapunov-exponent integration and compute the associated CLVs.
@@ -17,18 +90,18 @@ def lyap_analysis(
     """
     n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
-    Q_history, LE, LE_history, CLV_history = _compute_lyap_outputs(
-        f, Df, trajectory, t, *args, k_step=k_step
+    BLV_history, LE, LE_history, CLV_history = _compute_lyap_outputs(
+        f, Df, trajectory, t, *args, k_step=k_step, stepper=stepper
     )
 
-    expected_time_samples = Q_history.shape[-1]
+    expected_time_samples = BLV_history.shape[-1]
     if CLV_history.shape != (n, n, expected_time_samples):
         raise RuntimeError(
             "CLV history has inconsistent shape: "
             f"expected {(n, n, expected_time_samples)}, got {CLV_history.shape}."
         )
 
-    return LE, LE_history, Q_history, CLV_history
+    return BLV_history, LE, LE_history, CLV_history
 
 
 def lyap_exp(
@@ -38,6 +111,7 @@ def lyap_exp(
     t: np.ndarray,
     *args,
     k_step: int = 1,
+    stepper: Union[str, VariationalStepper, None] = "rk4",
     return_blv: bool = False,
 ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
@@ -47,8 +121,8 @@ def lyap_exp(
     ----------
     f, Df, trajectory, t
         Same as in ``lyap_analysis``.
-    return_backward : bool, optional
-        If True, also return the backward Lyapunov vectors (Q_history).
+    return_blv : bool, optional
+        If True, also return the backward Lyapunov vectors (BLV_history).
 
     Returns
     -------
@@ -56,17 +130,17 @@ def lyap_exp(
         Final Lyapunov exponents.
     LE_history : ndarray
         Time history of the Lyapunov exponents.
-    Q_history : ndarray, optional
+    BLV_history : ndarray, optional
         Returned when ``return_blv`` is True.
     """
     _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
-    Q_history, _, LE, LE_history = _run_variational_integrator(
-        f, Df, trajectory, t, *args, k_step=k_step
+    BLV_history, _, LE, LE_history = _run_variational_integrator(
+        f, Df, trajectory, t, *args, k_step=k_step, stepper=_resolve_stepper(stepper)
     )
 
     if return_blv:
-        return LE, LE_history, Q_history
+        return LE, LE_history, BLV_history
 
     return LE, LE_history
 
@@ -115,13 +189,15 @@ def _compute_lyap_outputs(
     t: np.ndarray,
     *args,
     k_step: int = 1,
+    stepper: Union[str, VariationalStepper, None] = "rk4",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Helper that runs the Lyapunov integration and CLV computation.
     Selects between standard and k-step integrators based on `k_step`.
     """
+    step = _resolve_stepper(stepper)
     Q_history, R_history, LE, LE_history = _run_variational_integrator(
-        f, Df, trajectory, t, *args, k_step=k_step
+        f, Df, trajectory, t, *args, k_step=k_step, stepper=step
     )
     CLV_history = _clvs(Q_history, R_history)
     return Q_history, LE, LE_history, CLV_history
@@ -134,13 +210,23 @@ def _run_variational_integrator(
     t: np.ndarray,
     *args,
     k_step: int = 1,
+    stepper: VariationalStepper = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    if stepper is None:
+        stepper = _var_rk4_step
     if k_step > 1:
-        return _lyap_int_k_step(f, Df, trajectory, t, k_step, *args)
-    return _lyap_int(f, Df, trajectory, t, *args)
+        return _lyap_int_k_step(f, Df, trajectory, t, k_step, stepper, *args)
+    return _lyap_int(f, Df, trajectory, t, stepper, *args)
 
 
-def _lyap_int(f: Callable, Df: Callable, trajectory: np.ndarray, t: np.ndarray, *args) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def _lyap_int(
+    f: Callable,
+    Df: Callable,
+    trajectory: np.ndarray,
+    t: np.ndarray,
+    stepper: VariationalStepper,
+    *args,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Compute the Lyapunov exponents of a dynamical system
     using variational equations and QR re-orthonormalization.
@@ -190,8 +276,8 @@ def _lyap_int(f: Callable, Df: Callable, trajectory: np.ndarray, t: np.ndarray, 
 
     # Time integration loop
     for i in range(nt - 1):
-        # Integrate state + variational system
-        _, Q = _var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+        # Integrate state + variational system via selected stepper
+        _, Q = stepper(f, Df, t[i], trajectory[:, i], Q, dt, *args)
 
         # Re-orthonormalize perturbations (keep MGS as requested)
         Q, R = np.linalg.qr(Q)
@@ -210,6 +296,7 @@ def _lyap_int_k_step(
     trajectory: np.ndarray,
     t: np.ndarray,
     k_step: int,
+    stepper: VariationalStepper,
     *args
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dt = t[1] - t[0]
@@ -231,7 +318,7 @@ def _lyap_int_k_step(
     j = 0
 
     for i in range(nt - 1):
-        _, Q = _var_rk4_step(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+        _, Q = stepper(f, Df, t[i], trajectory[:, i], Q, dt, *args)
 
         if ((i + 1) % k_step == 0):
             Q, R = np.linalg.qr(Q)
@@ -350,12 +437,24 @@ def _discrete_var_step(
     t: float,
     x: np.ndarray,
     V: np.ndarray,
+    dt: float,
     *args
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """Discrete-time variational step: x_{k+1} = f(x_k), V_{k+1} = Df(x_k) V_k.
 
+    The ``dt`` argument is unused and present for API compatibility.
+    """
     x_next = f(t, x, *args)
     V_next = Df(t, x, *args) @ V
     return x_next, V_next
+
+# Populate built-in stepper registry once stepper functions exist
+_STEPPERS.update({
+    "euler": _var_euler_step,
+    "rk2": _var_rk2_step,
+    "rk4": _var_rk4_step,
+    "discrete": _discrete_var_step,
+})
 
 def _qr_mgs(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
