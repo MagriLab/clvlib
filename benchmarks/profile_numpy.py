@@ -1,4 +1,3 @@
-from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import numpy as np
 from clvlib.numpy import lyap_analysis, compute_ICLE
@@ -29,14 +28,14 @@ def lorenz96_jacobian(_: float, x: np.ndarray, forcing: float) -> np.ndarray:  #
 
 
 def main():
+    np.seterr(divide="ignore", over="ignore", invalid="ignore")
     data = np.load("benchmarks/lorenz96_solution.npz", allow_pickle=True)
     t_loaded = data["t"]
     x_loaded = data["x"]
     x_loaded = x_loaded.T  # Transpose to shape (N, len(t))
     F = 8
 
-    print(x_loaded.shape, t_loaded.shape)
-
+    # Perform Lyapunov analysis
     Q_history, R_history, LE, LE_history, CLV_history= lyap_analysis(lorenz96, lorenz96_jacobian, x_loaded, t_loaded, F, k_step=1)
     ICLEs = compute_ICLE(lorenz96_jacobian, x_loaded, t_loaded, CLV_history, F)
 

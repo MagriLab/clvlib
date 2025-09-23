@@ -220,13 +220,13 @@ def _clvs(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
         C_next = scipy.linalg.solve_triangular(
             R[:, :, i], C[:, :, i + 1], lower=False, overwrite_b=True, check_finite=False
         )
-        C[:, :, i], D[:, i] = _normalize_columns(C_next)
+        C[:, :, i] = _normalize_columns(C_next)
 
         # Compute the CLVs 
         V[:, :, i] = Q[:, :, i] @ C[:, :, i]
 
     # Normalize CLVs across (lyap, time) without using 2D helper
-    V, _ = _normalize_columns(V)
+    V = _normalize_columns(V)
 
     return V
 
@@ -333,12 +333,8 @@ def _normalize_columns(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     -------
     Q : ndarray, shape (n, m)
         Matrix with normalized columns.
-    norms : ndarray, shape (m,)
-        Norm of each column before normalization.
     """
-    norms = np.linalg.norm(A, axis=0, keepdims=True)
-    norms_safe = np.where(norms == 0.0, 1.0, norms)
-    return A / norms_safe, norms
+    return A / np.linalg.norm(A, axis=0, keepdims=True)
 
 def compute_angles(V1: np.ndarray, V2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
