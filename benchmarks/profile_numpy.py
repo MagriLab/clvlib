@@ -38,7 +38,7 @@ def main():
     print(x_loaded.shape, t_loaded.shape)
 
     Q_history, R_history, LE, LE_history, CLV_history= lyap_analysis(lorenz96, lorenz96_jacobian, x_loaded, t_loaded, F, k_step=1)
-    ICLEs = compute_ICLE(lorenz96_jacobian, x_loaded.T, t_loaded, CLV_history)
+    ICLEs = compute_ICLE(lorenz96_jacobian, x_loaded, t_loaded, CLV_history, F)
 
 if __name__ == "__main__":
     main()
