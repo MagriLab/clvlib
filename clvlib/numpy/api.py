@@ -2,7 +2,7 @@ import numpy as np
 from typing import Callable, Tuple, Union
 
 from .steppers import VariationalStepper, resolve_stepper
-from .integrators import run_variational_integrator
+from .integrators import run_variational_integrator, run_state_variational_integrator
 from .clv import _clvs
 
 
@@ -62,6 +62,69 @@ def lyap_exp(
     return LE, LE_history
 
 
+def lyap_analysis_from_ic(
+    f: Callable,
+    Df: Callable,
+    x0: np.ndarray,
+    t: np.ndarray,
+    *args,
+    k_step: int = 1,
+    stepper: Union[str, VariationalStepper, None] = "rk4",
+    return_trajectory: bool = False,
+) -> Union[
+    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+]:
+    """
+    Run Lyapunov-exponent integration and compute CLVs starting from an initial condition.
+    Returns (LE, LE_history, BLV_history, CLV_history[, trajectory]).
+    """
+    _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
+
+    step = resolve_stepper(stepper)
+    LE, LE_history, BLV_history, R_history, trajectory = run_state_variational_integrator(
+        f, Df, x0, t, *args, k_step=k_step, stepper=step
+    )
+    CLV_history = _clvs(BLV_history, R_history)
+    if return_trajectory:
+        return LE, LE_history, BLV_history, CLV_history, trajectory
+    return LE, LE_history, BLV_history, CLV_history
+
+
+def lyap_exp_from_ic(
+    f: Callable,
+    Df: Callable,
+    x0: np.ndarray,
+    t: np.ndarray,
+    *args,
+    k_step: int = 1,
+    stepper: Union[str, VariationalStepper, None] = "rk4",
+    return_blv: bool = False,
+    return_trajectory: bool = False,
+) -> Union[
+    Tuple[np.ndarray, np.ndarray],
+    Tuple[np.ndarray, np.ndarray, np.ndarray],
+    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+]:
+    """
+    Run Lyapunov-exponent integration from an initial condition.
+    Returns (LE, LE_history[, BLV_history][, trajectory]).
+    """
+    _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
+
+    step = resolve_stepper(stepper)
+    LE, LE_history, BLV_history, _R, trajectory = run_state_variational_integrator(
+        f, Df, x0, t, *args, k_step=k_step, stepper=step
+    )
+    if return_blv and return_trajectory:
+        return LE, LE_history, BLV_history, trajectory
+    if return_blv:
+        return LE, LE_history, BLV_history
+    if return_trajectory:
+        return LE, LE_history, trajectory  # type: ignore[return-value]
+    return LE, LE_history
+
+
 def _validate_lyap_inputs(
     f: Callable,
     Df: Callable,
@@ -100,6 +163,38 @@ def _validate_lyap_inputs(
     return n, nt
 
 
+def _validate_lyap_ic_inputs(
+    f: Callable,
+    Df: Callable,
+    x0: np.ndarray,
+    t: np.ndarray,
+    k_step: int,
+) -> None:
+    if not callable(f):
+        raise TypeError("f must be callable.")
+    if not callable(Df):
+        raise TypeError("Df must be callable.")
+
+    if not isinstance(x0, np.ndarray):
+        raise TypeError("x0 must be a numpy.ndarray.")
+    if x0.ndim != 1:
+        raise ValueError("x0 must be one-dimensional.")
+    if x0.size < 1:
+        raise ValueError("x0 must contain at least one state variable.")
+
+    if not isinstance(t, np.ndarray):
+        raise TypeError("t must be a numpy.ndarray.")
+    if t.ndim != 1:
+        raise ValueError("t must be one-dimensional.")
+    if t.size < 2:
+        raise ValueError("t must contain at least two time points.")
+
+    if not isinstance(k_step, int):
+        raise TypeError("k_step must be an integer.")
+    if k_step < 1:
+        raise ValueError("k_step must be at least 1.")
+
+
 def _compute_lyap_outputs(
     f: Callable,
     Df: Callable,
@@ -120,4 +215,6 @@ def _compute_lyap_outputs(
 __all__ = [
     "lyap_analysis",
     "lyap_exp",
+    "lyap_analysis_from_ic",
+    "lyap_exp_from_ic",
 ]

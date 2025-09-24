@@ -95,6 +95,97 @@ def _lyap_int_k_step(
     return LE_history[-1], LE_history, Q_history, R_history
 
 
+def _lyap_int_from_x0(
+    f: Callable,
+    Df: Callable,
+    x0: np.ndarray,
+    t: np.ndarray,
+    stepper: VariationalStepper,
+    *args,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Integrate state and variational system from an initial condition.
+
+    Returns (LE_final, LE_history, Q_history, R_history, trajectory).
+    """
+    dt = t[1] - t[0]
+    nt = t.size
+    n = x0.size
+
+    trajectory = np.empty((nt, n), dtype=float)
+    trajectory[0] = x0
+
+    Q_history = np.empty((nt, n, n), dtype=float)
+    R_history = np.empty((nt, n, n), dtype=float)
+    LE_history = np.empty((nt, n), dtype=float)
+
+    Q = np.eye(n, dtype=float)
+    x = x0.astype(float, copy=True)
+
+    Q_history[0] = Q
+    R_history[0] = np.eye(n, dtype=float)
+    LE_history[0] = 0.0
+    log_sums = np.zeros(n, dtype=float)
+
+    for i in range(nt - 1):
+        x, Q = stepper(f, Df, t[i], x, Q, dt, *args)
+        trajectory[i + 1] = x
+        Q, R = np.linalg.qr(Q)
+        Q_history[i + 1] = Q
+        R_history[i + 1] = R
+        log_sums += np.log(np.abs(np.diag(R)))
+        LE_history[i + 1] = log_sums / ((i + 1) * dt)
+
+    return LE_history[-1], LE_history, Q_history, R_history, trajectory
+
+
+def _lyap_int_k_step_from_x0(
+    f: Callable,
+    Df: Callable,
+    x0: np.ndarray,
+    t: np.ndarray,
+    k_step: int,
+    stepper: VariationalStepper,
+    *args,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """k-step integration from an initial condition.
+
+    Returns (LE_final, LE_history, Q_history, R_history, trajectory).
+    """
+    dt = t[1] - t[0]
+    nt = t.size
+    n = x0.size
+    n_step = ((nt - 1) // k_step) + 1
+
+    trajectory = np.empty((nt, n), dtype=float)
+    trajectory[0] = x0
+
+    Q_history = np.empty((n_step, n, n), dtype=float)
+    R_history = np.empty((n_step, n, n), dtype=float)
+    LE_history = np.empty((n_step, n), dtype=float)
+
+    Q = np.eye(n, dtype=float)
+    x = x0.astype(float, copy=True)
+    log_sums = np.zeros(n, dtype=float)
+
+    Q_history[0] = Q
+    R_history[0] = np.eye(n, dtype=float)
+    LE_history[0] = 0.0
+
+    j = 0
+    for i in range(nt - 1):
+        x, Q = stepper(f, Df, t[i], x, Q, dt, *args)
+        trajectory[i + 1] = x
+        if (i + 1) % k_step == 0:
+            Q, R = np.linalg.qr(Q)
+            Q_history[j + 1] = Q
+            R_history[j + 1] = R
+            log_sums += np.log(np.abs(np.diag(R)))
+            LE_history[j + 1] = log_sums / ((j + 1) * k_step * dt)
+            j += 1
+
+    return LE_history[-1], LE_history, Q_history, R_history, trajectory
+
+
 def run_variational_integrator(
     f: Callable,
     Df: Callable,
@@ -111,7 +202,28 @@ def run_variational_integrator(
     return _lyap_int(f, Df, trajectory, t, stepper, *args)
 
 
+def run_state_variational_integrator(
+    f: Callable,
+    Df: Callable,
+    x0: np.ndarray,
+    t: np.ndarray,
+    *args,
+    k_step: int = 1,
+    stepper: VariationalStepper = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Integrate state and variational equations starting from ``x0``.
+
+    Returns (LE_final, LE_history, Q_history, R_history, trajectory).
+    """
+    if stepper is None:
+        raise ValueError("stepper must be provided (use steppers.resolve_stepper)")
+    if k_step > 1:
+        return _lyap_int_k_step_from_x0(f, Df, x0, t, k_step, stepper, *args)
+    return _lyap_int_from_x0(f, Df, x0, t, stepper, *args)
+
+
 __all__ = [
     "run_variational_integrator",
+    "run_state_variational_integrator",
     "_qr_mgs",
 ]
