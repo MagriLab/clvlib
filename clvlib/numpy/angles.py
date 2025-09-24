@@ -13,14 +13,14 @@ def compute_angles(V1: np.ndarray, V2: np.ndarray) -> Tuple[np.ndarray, np.ndarr
 def principal_angles(V1: np.ndarray, V2: np.ndarray) -> np.ndarray:
     """Principal angles (radians) between subspaces spanned by columns of V1 and V2.
 
-    Returns array of shape (min(m1, m2), nt) where V1 has shape (n, m1, nt)
-    and V2 has shape (n, m2, nt).
+    Time-first convention: V1 has shape (nt, n, m1), V2 has shape (nt, n, m2).
+    Returns array of shape (nt, min(m1, m2)).
     """
-    n, m1, nt = V1.shape
-    _, m2, _ = V2.shape
-    theta = np.empty((min(m1, m2), nt), dtype=float)
+    nt, _, m1 = V1.shape
+    _, _, m2 = V2.shape
+    theta = np.empty((nt, min(m1, m2)), dtype=float)
     for i in range(nt):
-        theta[:, i] = scipy.linalg.subspace_angles(V1[:, :, i], V2[:, :, i])
+        theta[i] = scipy.linalg.subspace_angles(V1[i], V2[i])
     return theta
 
 
@@ -28,4 +28,3 @@ __all__ = [
     "compute_angles",
     "principal_angles",
 ]
-

@@ -31,12 +31,13 @@ def main():
     np.seterr(divide="ignore", over="ignore", invalid="ignore")
     data = np.load("benchmarks/lorenz96_solution.npz", allow_pickle=True)
     t_loaded = data["t"]
-    x_loaded = data["x"]
-    x_loaded = x_loaded.T  # Transpose to shape (N, len(t))
+    x_loaded = data["x"]  # Expect shape (len(t), N) (time-first)
     F = 8
 
     # Perform Lyapunov analysis
-    LE, LE_history, Q_history, CLV_history= lyap_analysis(lorenz96, lorenz96_jacobian, x_loaded, t_loaded, F, k_step=1, )
+    LE, LE_history, Q_history, CLV_history= lyap_analysis(
+        lorenz96, lorenz96_jacobian, x_loaded, t_loaded, F, k_step=1,
+    )
     ICLEs = compute_ICLE(lorenz96_jacobian, x_loaded, t_loaded, CLV_history, F)
 
 if __name__ == "__main__":

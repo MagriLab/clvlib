@@ -30,28 +30,29 @@ def _lyap_int(
     *args,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dt = t[1] - t[0]
-    nt = len(t)
-    n = trajectory.shape[0]
+    nt = t.size
+    n = trajectory.shape[1]
 
-    Q_history = np.empty((n, n, nt))
-    R_history = np.empty((n, n, nt))
-    LE_history = np.empty((n, nt))
+    # Time-first histories: (nt, n, n) and (nt, n)
+    Q_history = np.empty((nt, n, n), dtype=float)
+    R_history = np.empty((nt, n, n), dtype=float)
+    LE_history = np.empty((nt, n), dtype=float)
 
-    Q = np.eye(n)
-    Q_history[:, :, 0] = Q
-    R_history[:, :, 0] = np.eye(n)
-    LE_history[:, 0] = 0.0
-    log_sums = 0.0
+    Q = np.eye(n, dtype=float)
+    Q_history[0] = Q
+    R_history[0] = np.eye(n, dtype=float)
+    LE_history[0] = 0.0
+    log_sums = np.zeros(n, dtype=float)
 
     for i in range(nt - 1):
-        _, Q = stepper(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+        _, Q = stepper(f, Df, t[i], trajectory[i], Q, dt, *args)
         Q, R = np.linalg.qr(Q)
-        Q_history[:, :, i + 1] = Q
-        R_history[:, :, i + 1] = R
+        Q_history[i + 1] = Q
+        R_history[i + 1] = R
         log_sums += np.log(np.abs(np.diag(R)))
-        LE_history[:, i + 1] = log_sums / ((i + 1) * dt)
+        LE_history[i + 1] = log_sums / ((i + 1) * dt)
 
-    return LE_history[:, -1], LE_history, Q_history, R_history
+    return LE_history[-1], LE_history, Q_history, R_history
 
 
 def _lyap_int_k_step(
@@ -65,32 +66,33 @@ def _lyap_int_k_step(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dt = t[1] - t[0]
     nt = t.size
-    n = trajectory.shape[0]
+    n = trajectory.shape[1]
     n_step = ((nt - 1) // k_step) + 1
 
-    Q_history = np.empty((n, n, n_step), dtype=float)
-    R_history = np.empty((n, n, n_step), dtype=float)
-    LE_history = np.empty((n, n_step), dtype=float)
+    # Time-first histories with k-step sampling: (n_step, n, n) and (n_step, n)
+    Q_history = np.empty((n_step, n, n), dtype=float)
+    R_history = np.empty((n_step, n, n), dtype=float)
+    LE_history = np.empty((n_step, n), dtype=float)
 
     Q = np.eye(n, dtype=float)
     log_sums = np.zeros(n, dtype=float)
 
-    Q_history[:, :, 0] = Q
-    R_history[:, :, 0] = np.eye(n, dtype=float)
-    LE_history[:, 0] = 0.0
+    Q_history[0] = Q
+    R_history[0] = np.eye(n, dtype=float)
+    LE_history[0] = 0.0
 
     j = 0
     for i in range(nt - 1):
-        _, Q = stepper(f, Df, t[i], trajectory[:, i], Q, dt, *args)
+        _, Q = stepper(f, Df, t[i], trajectory[i], Q, dt, *args)
         if (i + 1) % k_step == 0:
             Q, R = np.linalg.qr(Q)
-            Q_history[:, :, j + 1] = Q
-            R_history[:, :, j + 1] = R
+            Q_history[j + 1] = Q
+            R_history[j + 1] = R
             log_sums += np.log(np.abs(np.diag(R)))
-            LE_history[:, j + 1] = log_sums / ((j + 1) * k_step * dt)
+            LE_history[j + 1] = log_sums / ((j + 1) * k_step * dt)
             j += 1
 
-    return LE_history[:, -1], LE_history, Q_history, R_history
+    return LE_history[-1], LE_history, Q_history, R_history
 
 
 def run_variational_integrator(
@@ -113,4 +115,3 @@ __all__ = [
     "run_variational_integrator",
     "_qr_mgs",
 ]
-

@@ -26,11 +26,11 @@ def lyap_analysis(
         f, Df, trajectory, t, *args, k_step=k_step, stepper=stepper
     )
 
-    expected_time_samples = BLV_history.shape[-1]
-    if CLV_history.shape != (n, n, expected_time_samples):
+    expected_time_samples = BLV_history.shape[0]
+    if CLV_history.shape != (expected_time_samples, n, n):
         raise RuntimeError(
             "CLV history has inconsistent shape: "
-            f"expected {(n, n, expected_time_samples)}, got {CLV_history.shape}."
+            f"expected {(expected_time_samples, n, n)}, got {CLV_history.shape}."
         )
 
     return LE, LE_history, BLV_history, CLV_history
@@ -52,7 +52,7 @@ def lyap_exp(
     """
     _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
-    BLV_history, _, LE, LE_history = run_variational_integrator(
+    LE, LE_history, BLV_history, _ = run_variational_integrator(
         f, Df, trajectory, t, *args, k_step=k_step, stepper=resolve_stepper(stepper)
     )
 
@@ -77,7 +77,7 @@ def _validate_lyap_inputs(
     if not isinstance(trajectory, np.ndarray):
         raise TypeError("trajectory must be a numpy.ndarray.")
     if trajectory.ndim != 2:
-        raise ValueError("trajectory must have shape (n, nt).")
+        raise ValueError("trajectory must have shape (nt, n).")
 
     if not isinstance(t, np.ndarray):
         raise TypeError("t must be a numpy.ndarray.")
@@ -91,7 +91,7 @@ def _validate_lyap_inputs(
     if k_step < 1:
         raise ValueError("k_step must be at least 1.")
 
-    n, nt = trajectory.shape
+    nt, n = trajectory.shape
     if nt != t.size:
         raise ValueError(
             f"trajectory has {nt} time samples but t has {t.size} entries."
@@ -121,4 +121,3 @@ __all__ = [
     "lyap_analysis",
     "lyap_exp",
 ]
-

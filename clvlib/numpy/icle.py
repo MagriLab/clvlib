@@ -22,8 +22,8 @@ def compute_ICLE(
     if CLV_history.ndim != 3:
         raise ValueError("CLV_history must be three-dimensional.")
 
-    n_state, n_time = solution.shape
-    n_clv_state, m, n_samples = CLV_history.shape
+    n_time, n_state = solution.shape
+    n_samples, n_clv_state, m = CLV_history.shape
     if n_state != n_clv_state:
         raise ValueError("solution and CLV_history must share the same state dimension.")
     if n_time != time.size:
@@ -39,7 +39,7 @@ def compute_ICLE(
             "CLV history length is incompatible with the provided solution/time for this k_step."
         )
 
-    states = solution[:, sample_indices]
+    states = solution[sample_indices, :]
     times = time[sample_indices]
 
     return _compute_icle_series(jacobian_function, states, times, CLV_history, *args)
@@ -52,8 +52,11 @@ def _compute_icle_series(
     CLV_history: np.ndarray,
     *args,
 ) -> np.ndarray:
-    J_history = _compute_jacobian_time_history(jacobian_function, sampled_states, sampled_times, *args)
-    ICLE = np.einsum('ikt,ijt,jkt->kt', CLV_history, J_history, CLV_history)
+    J_history = _compute_jacobian_time_history(
+        jacobian_function, sampled_states, sampled_times, *args
+    )
+    # Time-first einsum: CLV_history (t,i,k), J_history (t,i,j)
+    ICLE = np.einsum('tik,tij,tjk->tk', CLV_history, J_history, CLV_history)
     return ICLE
 
 
@@ -63,14 +66,15 @@ def _compute_jacobian_time_history(
     sampled_times: np.ndarray,
     *args,
 ) -> np.ndarray:
-    n_state, n_samples = sampled_states.shape
-    J_history = np.empty((n_state, n_state, n_samples), dtype=float)
+    n_samples, n_state = sampled_states.shape
+    J_history = np.empty((n_samples, n_state, n_state), dtype=float)
     for idx in range(n_samples):
-        J_history[:, :, idx] = jacobian_function(sampled_times[idx], sampled_states[:, idx], *args)
+        J_history[idx] = jacobian_function(
+            sampled_times[idx], sampled_states[idx], *args
+        )
     return J_history
 
 
 __all__ = [
     "compute_ICLE",
 ]
-
