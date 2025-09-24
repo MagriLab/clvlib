@@ -226,7 +226,6 @@ def _qr_mgs(Q: np.ndarray):
 
 
 
-@njit(cache=True)
 def _var_rk4_step(
     f: Callable,
     Df: Callable,

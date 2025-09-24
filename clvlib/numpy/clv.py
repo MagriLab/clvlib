@@ -4,7 +4,7 @@ from typing import Tuple
 
 
 def _normalize_columns(A: np.ndarray) -> np.ndarray:
-    return A / np.linalg.norm(A, axis=0, keepdims=True)
+    return A / np.linalg.norm(A, axis=1, keepdims=True)
 
 
 def _clvs(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
