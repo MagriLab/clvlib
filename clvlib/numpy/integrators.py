@@ -1,24 +1,59 @@
 import numpy as np
 from typing import Callable, Tuple
+
+from numba import njit
+import scipy.linalg
+
 from .steppers import VariationalStepper
 
 
-def _qr_mgs(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """QR decomposition using Modified Gram–Schmidt."""
+@njit(fastmath=True)
+def gram_schmidt_qr(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     m, n = A.shape
-    Q = np.zeros((m, n))
-    R = np.zeros((n, n))
-    V = A.copy()
+    Q = np.zeros((m, n), dtype=np.float64)
+    R = np.zeros((n, n), dtype=np.float64)
 
     for j in range(n):
-        norm = np.sqrt(np.sum(V[:, j] * V[:, j]))
-        Q[:, j] = V[:, j] / norm
-        R[j, j] = norm
-        for k in range(j + 1, n):
-            R[j, k] = np.dot(Q[:, j], V[:, k])
-            V[:, k] = V[:, k] - R[j, k] * Q[:, j]
+        # v = A[:, j].copy()
+        v = np.empty(m, dtype=np.float64)
+        for r in range(m):
+            v[r] = A[r, j]
+
+        for i in range(j):
+            # R[i, j] = dot(Q[:, i], A[:, j])
+            s = 0.0
+            for k in range(m):
+                s += Q[k, i] * A[k, j]
+            R[i, j] = s
+
+            # v -= R[i, j] * Q[:, i]
+            c = R[i, j]
+            for k in range(m):
+                v[k] -= c * Q[k, i]
+
+        # R[j, j] = norm(v)
+        s2 = 0.0
+        for k in range(m):
+            s2 += v[k] * v[k]
+        Rjj = np.sqrt(s2)
+        R[j, j] = Rjj
+
+        # Q[:, j] = v / R[j, j]
+        inv = 1.0 / Rjj
+        for k in range(m):
+            Q[k, j] = v[k] * inv
 
     return Q, R
+
+
+def _compute_qr(Q: np.ndarray, qr_method: str) -> Tuple[np.ndarray, np.ndarray]:
+    method = qr_method.lower()
+    if method in {"householder", "scipy", "qr"}:
+        return scipy.linalg.qr(Q, overwrite_a=True, mode="full", check_finite=False)
+    if method in {"gs", "gram-schmidt", "gram_schmidt", "numba"}:
+        return gram_schmidt_qr(np.ascontiguousarray(Q, dtype=np.float64))
+    available = "householder, gs"
+    raise ValueError(f"Unknown qr_method '{qr_method}'. Available: {available}.")
 
 
 def _lyap_int(
@@ -28,6 +63,7 @@ def _lyap_int(
     t: np.ndarray,
     stepper: VariationalStepper,
     *args,
+    qr_method: str = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dt = t[1] - t[0]
     nt = t.size
@@ -46,7 +82,7 @@ def _lyap_int(
 
     for i in range(nt - 1):
         _, Q = stepper(f, Df, t[i], trajectory[i], Q, dt, *args)
-        Q, R = np.linalg.qr(Q)
+        Q, R = _compute_qr(Q, qr_method)
         Q_history[i + 1] = Q
         R_history[i + 1] = R
         log_sums += np.log(np.abs(np.diag(R)))
@@ -63,6 +99,7 @@ def _lyap_int_k_step(
     k_step: int,
     stepper: VariationalStepper,
     *args,
+    qr_method: str = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dt = t[1] - t[0]
     nt = t.size
@@ -85,7 +122,7 @@ def _lyap_int_k_step(
     for i in range(nt - 1):
         _, Q = stepper(f, Df, t[i], trajectory[i], Q, dt, *args)
         if (i + 1) % k_step == 0:
-            Q, R = np.linalg.qr(Q)
+            Q, R = _compute_qr(Q, qr_method)
             Q_history[j + 1] = Q
             R_history[j + 1] = R
             log_sums += np.log(np.abs(np.diag(R)))
@@ -102,6 +139,7 @@ def _lyap_int_from_x0(
     t: np.ndarray,
     stepper: VariationalStepper,
     *args,
+    qr_method: str = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Integrate state and variational system from an initial condition.
 
@@ -129,7 +167,7 @@ def _lyap_int_from_x0(
     for i in range(nt - 1):
         x, Q = stepper(f, Df, t[i], x, Q, dt, *args)
         trajectory[i + 1] = x
-        Q, R = np.linalg.qr(Q)
+        Q, R = _compute_qr(Q, qr_method)
         Q_history[i + 1] = Q
         R_history[i + 1] = R
         log_sums += np.log(np.abs(np.diag(R)))
@@ -146,6 +184,7 @@ def _lyap_int_k_step_from_x0(
     k_step: int,
     stepper: VariationalStepper,
     *args,
+    qr_method: str = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """k-step integration from an initial condition.
 
@@ -176,7 +215,7 @@ def _lyap_int_k_step_from_x0(
         x, Q = stepper(f, Df, t[i], x, Q, dt, *args)
         trajectory[i + 1] = x
         if (i + 1) % k_step == 0:
-            Q, R = np.linalg.qr(Q)
+            Q, R = _compute_qr(Q, qr_method)
             Q_history[j + 1] = Q
             R_history[j + 1] = R
             log_sums += np.log(np.abs(np.diag(R)))
@@ -194,12 +233,15 @@ def run_variational_integrator(
     *args,
     k_step: int = 1,
     stepper: VariationalStepper = None,
+    qr_method: str = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     if stepper is None:
         raise ValueError("stepper must be provided (use steppers.resolve_stepper)")
     if k_step > 1:
-        return _lyap_int_k_step(f, Df, trajectory, t, k_step, stepper, *args)
-    return _lyap_int(f, Df, trajectory, t, stepper, *args)
+        return _lyap_int_k_step(
+            f, Df, trajectory, t, k_step, stepper, *args, qr_method=qr_method
+        )
+    return _lyap_int(f, Df, trajectory, t, stepper, *args, qr_method=qr_method)
 
 
 def run_state_variational_integrator(
@@ -210,6 +252,7 @@ def run_state_variational_integrator(
     *args,
     k_step: int = 1,
     stepper: VariationalStepper = None,
+    qr_method: str = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Integrate state and variational equations starting from ``x0``.
 
@@ -218,12 +261,15 @@ def run_state_variational_integrator(
     if stepper is None:
         raise ValueError("stepper must be provided (use steppers.resolve_stepper)")
     if k_step > 1:
-        return _lyap_int_k_step_from_x0(f, Df, x0, t, k_step, stepper, *args)
-    return _lyap_int_from_x0(f, Df, x0, t, stepper, *args)
+        return _lyap_int_k_step_from_x0(
+            f, Df, x0, t, k_step, stepper, *args, qr_method=qr_method
+        )
+    return _lyap_int_from_x0(
+        f, Df, x0, t, stepper, *args, qr_method=qr_method
+    )
 
 
 __all__ = [
     "run_variational_integrator",
     "run_state_variational_integrator",
-    "_qr_mgs",
 ]

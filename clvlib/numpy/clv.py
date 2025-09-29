@@ -1,42 +1,69 @@
 import numpy as np
 import scipy.linalg
-from typing import Tuple
 
 
 def _normalize_columns(A: np.ndarray) -> np.ndarray:
     return A / np.linalg.norm(A, axis=1, keepdims=True)
 
 
-def _clvs(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
-    """
-    Compute the Covariant Lyapunov Vectors (CLVs) using Ginelli et al. (2007).
+def _ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
+    """Backward (standard) Ginelli algorithm."""
 
-    Parameters
-    ----------
-    Q : ndarray, shape (n_time, n_dim, n_lyap)
-        Time-first series of Gram–Schmidt vectors.
-    R : ndarray, shape (n_time, n_lyap, n_lyap)
-        Time-first series of upper-triangular R matrices from QR decomposition.
-    """
     n_time, n_dim, n_lyap = Q.shape
-
-    # Coordinates of CLVs in GS basis and the CLVs themselves (time-first)
-    C = np.empty((n_time, n_lyap, n_lyap), dtype=Q.dtype)
     V = np.empty((n_time, n_dim, n_lyap), dtype=Q.dtype)
 
-    C[-1] = np.eye(n_lyap)
-    V[-1] = Q[-1] @ C[-1]
+    C = np.eye(n_lyap, dtype=Q.dtype)
+    V[-1] = Q[-1] @ C
 
     for i in reversed(range(n_time - 1)):
-        C_next = scipy.linalg.solve_triangular(
-            R[i], C[i + 1], lower=False, overwrite_b=True, check_finite=False
+        C = scipy.linalg.solve_triangular(
+            R[i], C, lower=False, overwrite_b=True, check_finite=False
         )
-        C[i] = _normalize_columns(C_next)
-        V[i] = Q[i] @ C[i]
-
-    # Normalize CLVs along the state axis for each (t, k)
-    V = V / np.linalg.norm(V, axis=1, keepdims=True)
+        C = _normalize_columns(C)
+        V[i] = Q[i] @ C
     return V
+
+
+def _upwind_ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
+    """Upwind (forward-shifted) Ginelli algorithm variant."""
+
+    n_time, n_dim, n_lyap = Q.shape
+    V = np.empty((n_time, n_dim, n_lyap), dtype=Q.dtype)
+
+    C = np.eye(n_lyap, dtype=Q.dtype)
+    V[-1] = Q[-1] @ C
+
+    for i in reversed(range(n_time - 1)):
+        C = scipy.linalg.solve_triangular(
+            R[i + 1], C, lower=False, overwrite_b=True, check_finite=False
+        )
+        C = _normalize_columns(C)
+        V[i] = Q[i] @ C
+    return V
+
+
+_GINELLI_METHODS = {
+    "standard": _ginelli,
+    "ginelli": _ginelli,
+    "backward": _ginelli,
+    "upwind": _upwind_ginelli,
+    "upwind_ginelli": _upwind_ginelli,
+}
+
+
+def _clvs(Q: np.ndarray, R: np.ndarray, *, ginelli_method: str = "standard") -> np.ndarray:
+    """Dispatch CLV reconstruction to the selected Ginelli variant."""
+
+    try:
+        solver = _GINELLI_METHODS[ginelli_method.lower()]
+    except KeyError as exc:  # pragma: no cover - defensive path
+        available = ", ".join(sorted(_GINELLI_METHODS))
+        raise ValueError(
+            f"Unknown ginelli_method '{ginelli_method}'. Available: {available}."
+        ) from exc
+
+    V = solver(Q, R)
+    return V / np.linalg.norm(V, axis=1, keepdims=True)
 
 
 __all__ = [

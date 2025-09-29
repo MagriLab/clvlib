@@ -39,17 +39,19 @@ def lorenz96(t, X, F=10):
         return Xdot
 
 def lorenz96_jacobian(t, X, F=10):
-    K = len(X)
-    # Initialize the Jacobian matrix
-    J_xx = np.zeros((K, K))
+    K = X.shape[0]
+    J_xx = np.full((K, K), 0.0)
+
     idx = np.arange(K)
-    idx_im1 = (idx - 1) % K  # X[i-1]
-    idx_ip1 = (idx + 1) % K  # X[i+1]
-    idx_im2 = (idx - 2) % K  # X[i-2]
-    J_xx[idx, idx_im1] = X[idx_ip1] - X[idx_im2]
-    J_xx[idx, idx_ip1] = X[idx_im1]
-    J_xx[idx, idx_im2] = -X[idx_im1]
-    J_xx[idx, idx] = -1
+    im1 = (idx - 1) % K
+    ip1 = (idx + 1) % K
+    im2 = (idx - 2) % K
+
+    # Fill columns directly (vectorized)
+    J_xx[idx, im1] = X[ip1] - X[im2]
+    J_xx[idx, ip1] = X[im1]
+    J_xx[idx, im2] = -X[im1]
+    J_xx[idx, idx] = -1.0
 
     return J_xx
 

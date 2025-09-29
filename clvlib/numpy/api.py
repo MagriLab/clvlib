@@ -14,6 +14,8 @@ def lyap_analysis(
     *args,
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
+    qr_method: str = "householder",
+    ginelli_method: str = "standard",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Run Lyapunov-exponent integration and compute the associated CLVs.
@@ -23,7 +25,15 @@ def lyap_analysis(
     n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
     LE, LE_history, BLV_history, CLV_history = _compute_lyap_outputs(
-        f, Df, trajectory, t, *args, k_step=k_step, stepper=stepper
+        f,
+        Df,
+        trajectory,
+        t,
+        *args,
+        k_step=k_step,
+        stepper=stepper,
+        qr_method=qr_method,
+        ginelli_method=ginelli_method,
     )
 
     expected_time_samples = BLV_history.shape[0]
@@ -45,6 +55,7 @@ def lyap_exp(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     return_blv: bool = False,
+    qr_method: str = "householder",
 ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
     Run Lyapunov-exponent integration without computing CLVs.
@@ -53,7 +64,14 @@ def lyap_exp(
     _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
     LE, LE_history, BLV_history, _ = run_variational_integrator(
-        f, Df, trajectory, t, *args, k_step=k_step, stepper=resolve_stepper(stepper)
+        f,
+        Df,
+        trajectory,
+        t,
+        *args,
+        k_step=k_step,
+        stepper=resolve_stepper(stepper),
+        qr_method=qr_method,
     )
 
     if return_blv:
@@ -71,6 +89,8 @@ def lyap_analysis_from_ic(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     return_trajectory: bool = False,
+    qr_method: str = "householder",
+    ginelli_method: str = "standard",
 ) -> Union[
     Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
     Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray],
@@ -83,9 +103,16 @@ def lyap_analysis_from_ic(
 
     step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, R_history, trajectory = run_state_variational_integrator(
-        f, Df, x0, t, *args, k_step=k_step, stepper=step
+        f,
+        Df,
+        x0,
+        t,
+        *args,
+        k_step=k_step,
+        stepper=step,
+        qr_method=qr_method,
     )
-    CLV_history = _clvs(BLV_history, R_history)
+    CLV_history = _clvs(BLV_history, R_history, ginelli_method=ginelli_method)
     if return_trajectory:
         return LE, LE_history, BLV_history, CLV_history, trajectory
     return LE, LE_history, BLV_history, CLV_history
@@ -101,6 +128,7 @@ def lyap_exp_from_ic(
     stepper: Union[str, VariationalStepper, None] = "rk4",
     return_blv: bool = False,
     return_trajectory: bool = False,
+    qr_method: str = "householder",
 ) -> Union[
     Tuple[np.ndarray, np.ndarray],
     Tuple[np.ndarray, np.ndarray, np.ndarray],
@@ -114,7 +142,14 @@ def lyap_exp_from_ic(
 
     step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, _R, trajectory = run_state_variational_integrator(
-        f, Df, x0, t, *args, k_step=k_step, stepper=step
+        f,
+        Df,
+        x0,
+        t,
+        *args,
+        k_step=k_step,
+        stepper=step,
+        qr_method=qr_method,
     )
     if return_blv and return_trajectory:
         return LE, LE_history, BLV_history, trajectory
@@ -203,13 +238,22 @@ def _compute_lyap_outputs(
     *args,
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
+    qr_method: str = "householder",
+    ginelli_method: str = "standard",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     step = resolve_stepper(stepper)
     LE, LE_history, Q_history, R_history = run_variational_integrator(
-        f, Df, trajectory, t, *args, k_step=k_step, stepper=step
+        f,
+        Df,
+        trajectory,
+        t,
+        *args,
+        k_step=k_step,
+        stepper=step,
+        qr_method=qr_method,
     )
-    CLV_history = _clvs(Q_history, R_history)
-    return  LE, LE_history, Q_history, CLV_history
+    CLV_history = _clvs(Q_history, R_history, ginelli_method=ginelli_method)
+    return LE, LE_history, Q_history, CLV_history
 
 
 __all__ = [
