@@ -5,8 +5,17 @@ from .steppers import VariationalStepper
 
 Tensor = torch.Tensor
 
+def gram_schmidt_qr(A: torch.Tensor):
+    """
+    Performs QR decomposition using Classical Gram-Schmidt orthogonalization.
 
-def gram_schmidt_qr(A: Tensor) -> Tuple[Tensor, Tensor]:
+    Args:
+        A (torch.Tensor): Input matrix of shape (m, n)
+
+    Returns:
+        Q (torch.Tensor): Orthonormal matrix of shape (m, n)
+        R (torch.Tensor): Upper triangular matrix of shape (n, n)
+    """
     m, n = A.shape
     Q = torch.zeros((m, n), dtype=A.dtype, device=A.device)
     R = torch.zeros((n, n), dtype=A.dtype, device=A.device)
@@ -15,19 +24,15 @@ def gram_schmidt_qr(A: Tensor) -> Tuple[Tensor, Tensor]:
         v = A[:, j].clone()
         for i in range(j):
             R[i, j] = torch.dot(Q[:, i], A[:, j])
-            v = v - R[i, j] * Q[:, i]
-
-        Rjj = torch.norm(v)
-        if torch.isclose(Rjj, torch.tensor(0.0, dtype=Rjj.dtype, device=Rjj.device)):
-            raise RuntimeError("Encountered zero-vector during Gram-Schmidt QR.")
-        R[j, j] = Rjj
-        Q[:, j] = v / Rjj
+            v -= R[i, j] * Q[:, i]
+        R[j, j] = torch.norm(v, p=2)
+        Q[:, j] = v / R[j, j]
 
     return Q, R
 
 
 def _qr_householder(Q: Tensor) -> Tuple[Tensor, Tensor]:
-    return torch.linalg.qr(Q, mode="reduced")
+    return torch.linalg.qr(Q, mode="full")
 
 
 def _qr_gram_schmidt(Q: Tensor) -> Tuple[Tensor, Tensor]:
