@@ -1,6 +1,5 @@
-import matplotlib.pyplot as plt
 import numpy as np
-from clvlib.numba import lyap_analysis, compute_ICLE
+from clvlib.numpy import lyap_analysis, compute_ICLE
 
 def lorenz96(_: float, x: np.ndarray, forcing: float) -> np.ndarray:
     """Lorenz-96 vector field (pure NumPy)."""
@@ -35,11 +34,10 @@ def main():
     F = 8
 
     # Perform Lyapunov analysis
-    Q_history, R_history, LE, LE_history, CLV_history= lyap_analysis(
-        lorenz96, lorenz96_jacobian, x_loaded.T, t_loaded, F, k_step=1,
+    LE, LE_history, Q_history, CLV_history = lyap_analysis(
+        lorenz96, lorenz96_jacobian, x_loaded, t_loaded, F, k_step=1,
     )
-    ICLEs = compute_ICLE(lorenz96_jacobian, x_loaded.T, t_loaded, CLV_history, F)
+    ICLEs = compute_ICLE(lorenz96_jacobian, x_loaded, t_loaded, CLV_history, F)
 
 if __name__ == "__main__":
     main()
-

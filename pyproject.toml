@@ -19,6 +19,22 @@ authors = [
   {name = "clvlib authors"}
 ]
 
-[tool.setuptools]
-packages = ["clvlib"]
+[project.optional-dependencies]
+numba = [
+  "numba>=0.56",
+]
+torch = [
+  "torch>=1.12",
+]
+dev = [
+  "pytest>=7",
+  "ruff>=0.5",
+  "black>=24.3",
+  "mypy>=1.10",
+]
 
+[tool.setuptools]
+packages = { find = {} }
+
+[tool.setuptools.packages.find]
+include = ["clvlib*"]

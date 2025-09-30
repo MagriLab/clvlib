@@ -2,7 +2,7 @@ import numpy as np
 import scipy.linalg
 
 
-def _normalize_columns(A: np.ndarray) -> np.ndarray:
+def _normalize(A: np.ndarray) -> np.ndarray:
     return A / np.linalg.norm(A, axis=1, keepdims=True)
 
 
@@ -19,7 +19,7 @@ def _ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
         C = scipy.linalg.solve_triangular(
             R[i], C, lower=False, overwrite_b=True, check_finite=False
         )
-        C = _normalize_columns(C)
+        C = _normalize(C)
         V[i] = Q[i] @ C
     return V
 
@@ -37,7 +37,7 @@ def _upwind_ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
         C = scipy.linalg.solve_triangular(
             R[i + 1], C, lower=False, overwrite_b=True, check_finite=False
         )
-        C = _normalize_columns(C)
+        C = _normalize(C)
         V[i] = Q[i] @ C
     return V
 

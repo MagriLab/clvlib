@@ -1,8 +1,17 @@
 import numpy as np
 from typing import Callable, Tuple, Union
 
-from numba import njit
 import scipy.linalg
+
+# Optional Numba import: fall back to a no-op decorator if unavailable
+try:  # pragma: no cover - optional dependency handling
+    from numba import njit  # type: ignore
+except Exception:  # pragma: no cover - if numba is not installed
+    def njit(*_args, **_kwargs):  # type: ignore
+        def _wrap(func):
+            return func
+
+        return _wrap
 
 from .steppers import VariationalStepper
 

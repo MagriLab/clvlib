@@ -3,7 +3,7 @@ import torch
 Tensor = torch.Tensor
 
 
-def _normalize_columns(A: Tensor) -> Tensor:
+def _normalize(A: Tensor) -> Tensor:
     return A / torch.linalg.norm(A, dim=1, keepdim=True)
 
 
@@ -23,7 +23,7 @@ def _ginelli(Q: Tensor, R: Tensor) -> Tensor:
 
     for i in reversed(range(n_time - 1)):
         C = _solve_upper_triangular(R[i], C)
-        C = _normalize_columns(C)
+        C = _normalize(C)
         V[i] = Q[i] @ C
     return V
 
@@ -38,7 +38,7 @@ def _upwind_ginelli(Q: Tensor, R: Tensor) -> Tensor:
 
     for i in reversed(range(n_time - 1)):
         C = _solve_upper_triangular(R[i + 1], C)
-        C = _normalize_columns(C)
+        C = _normalize(C)
         V[i] = Q[i] @ C
     return V
 

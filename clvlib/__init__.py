@@ -38,7 +38,8 @@ __all__ = [
 try:
     from . import numba as numba_backend
 except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
-    if exc.name == "numba":
+    # Handle both missing external dependency 'numba' and missing subpackage 'clvlib.numba'
+    if exc.name in {"numba", "clvlib.numba", f"{__name__}.numba"}:
         numba = None
     else:  # importing clvlib.numba failed for another reason
         raise

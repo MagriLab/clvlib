@@ -16,7 +16,7 @@ from typing import Callable, List, Sequence
 import numpy as np
 from numba import njit
 
-from clvlib.numba.lyap_fun import lyap_analysis as lyap_analysis_numba
+from clvlib.numpy.lyap_fun import lyap_analysis as lyap_analysis_numba
 from clvlib.numpy.lyap_fun import lyap_analysis as lyap_analysis_numpy
 
 
