@@ -23,7 +23,7 @@ def test_lyap_exp_linear_system_householder():
     steps = 2000
     t = np.linspace(0.0, T, steps + 1)
     n = len(eigs)
-    trajectory = np.zeros((t.size, n), dtype=float)
+    trajectory = np.zeros((t.size, n), dtype=float) # Fixed point trajectory in 0
 
     LE, LE_history = lyap_exp(f, Df, trajectory, t, stepper="rk4")
     expected = np.sort(np.array(eigs))[::-1]
@@ -56,7 +56,7 @@ def test_lyap_analysis_shapes_kstep():
     n = len(eigs)
     trajectory = np.zeros((t.size, n), dtype=float)
 
-    k_step = 5
+    k_step = 7
     LE, LE_hist, BLV_hist, CLV_hist = lyap_analysis(
         f, Df, trajectory, t, stepper="rk4", k_step=k_step
     )
