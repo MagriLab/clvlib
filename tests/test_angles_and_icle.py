@@ -1,6 +1,6 @@
 import numpy as np
 
-from clvlib.numpy import compute_angles, principal_angles, compute_ICLE
+from clvlib.numpy import compute_angles, principal_angles, compute_ICLE, lyap_analysis
 
 
 def test_compute_angles_clamping_and_identity():
@@ -45,3 +45,51 @@ def test_icle_with_known_clv_and_constant_jacobian():
     for i in range(nt):
         assert np.allclose(icle[i], eigs, atol=1e-12)
 
+
+def test_icle_kstep_sampling_matches_expected():
+    # Same setup but using k_step sampling
+    eigs = np.array([0.2, -0.1], dtype=float)
+    A = np.diag(eigs)
+
+    def jac(t, x):  # noqa: ARG001
+        return A
+
+    nt = 21
+    n = A.shape[0]
+    t = np.linspace(0.0, 1.0, nt)
+    sol = np.zeros((nt, n), dtype=float)
+    k_step = 5
+    n_samples = ((nt - 1) // k_step) + 1
+    CLV_history = np.repeat(np.eye(n, dtype=float)[None, :, :], n_samples, axis=0)
+    icle = compute_ICLE(jac, sol, t, CLV_history, k_step=k_step)
+    assert icle.shape == (n_samples, n)
+    for i in range(n_samples):
+        assert np.allclose(icle[i], eigs, atol=1e-12)
+
+
+def test_clvs_match_eigenvectors_in_linear_diagonal_case():
+    # Diagonal linear system where eigenvectors are canonical basis
+    eigs = [0.5, 0.2, -0.1]
+    A = np.diag(np.array(eigs, dtype=float))
+
+    def f(t, x):  # noqa: ARG001
+        return A @ x
+
+    def Df(t, x):  # noqa: ARG001
+        return A
+
+    T = 2.0
+    steps = 500
+    t = np.linspace(0.0, T, steps + 1)
+    n = len(eigs)
+    traj = np.zeros((t.size, n), dtype=float)
+
+    LE, LE_hist, BLV_hist, CLV_hist = lyap_analysis(
+        f, Df, traj, t, stepper="rk4", k_step=1, ginelli_method="standard"
+    )
+
+    I = np.eye(n, dtype=float)
+    for k in range(n):
+        e = I[:, k]
+        dots = np.einsum("ti,i->t", CLV_hist[:, :, k], e)
+        assert np.allclose(np.abs(dots), 1.0, atol=1e-6)

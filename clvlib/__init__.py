@@ -35,16 +35,11 @@ __all__ = [
     "numpy",
 ]
 
-try:
-    from . import numba as numba_backend
-except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
-    # Handle both missing external dependency 'numba' and missing subpackage 'clvlib.numba'
-    if exc.name in {"numba", "clvlib.numba", f"{__name__}.numba"}:
-        numba = None
-    else:  # importing clvlib.numba failed for another reason
-        raise
-else:
-    numba = numba_backend
-    __all__.append("numba")
 
-__version__ = "0.1.0"
+from . import numba as numba_backend
+from . import pytorch as pytorch_backend
+
+# Expose backends at top level for convenience
+numba = numba_backend
+pytorch = pytorch_backend
+__all__ += ["numba", "pytorch"]
