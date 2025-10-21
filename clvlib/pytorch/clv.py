@@ -4,7 +4,7 @@ Tensor = torch.Tensor
 
 
 def _normalize(A: Tensor) -> Tensor:
-    return A / torch.linalg.norm(A, dim=1, keepdim=True)
+    return A / torch.linalg.norm(A, dim=0, keepdim=True)
 
 
 def _solve_upper_triangular(R: Tensor, C: Tensor) -> Tensor:
