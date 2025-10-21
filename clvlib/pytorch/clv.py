@@ -23,8 +23,7 @@ def _ginelli(Q: Tensor, R: Tensor) -> Tensor:
 
     for i in reversed(range(n_time - 1)):
         C = _solve_upper_triangular(R[i], C)
-        C = _normalize(C)
-        V[i] = Q[i] @ C
+        V[i] = Q[i] @ _normalize(C)
     return V
 
 
@@ -63,7 +62,7 @@ def _clvs(Q: Tensor, R: Tensor, *, ginelli_method: str = "standard") -> Tensor:
         ) from exc
 
     V = solver(Q, R)
-    return V / torch.linalg.norm(V, dim=1, keepdim=True)
+    return V
 
 
 __all__ = [

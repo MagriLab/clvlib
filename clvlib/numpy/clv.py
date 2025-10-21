@@ -16,11 +16,8 @@ def _ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     V[-1] = Q[-1] @ C
 
     for i in reversed(range(n_time - 1)):
-        C = scipy.linalg.solve_triangular(
-            R[i], C, lower=False, overwrite_b=True, check_finite=False
-        )
-        C = _normalize(C)
-        V[i] = Q[i] @ C
+        C = scipy.linalg.solve_triangular(R[i], C, lower=False, overwrite_b=True, check_finite=False)
+        V[i] = Q[i] @ _normalize(C)
     return V
 
 
@@ -34,11 +31,8 @@ def _upwind_ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     V[-1] = Q[-1] @ C
 
     for i in reversed(range(n_time - 1)):
-        C = scipy.linalg.solve_triangular(
-            R[i + 1], C, lower=False, overwrite_b=True, check_finite=False
-        )
-        C = _normalize(C)
-        V[i] = Q[i] @ C
+        C = scipy.linalg.solve_triangular(R[i + 1], C, lower=False, overwrite_b=True, check_finite=False)
+        V[i] = Q[i] @ _normalize(C)
     return V
 
 
@@ -63,7 +57,7 @@ def _clvs(Q: np.ndarray, R: np.ndarray, *, ginelli_method: str = "standard") -> 
         ) from exc
 
     V = solver(Q, R)
-    return V / np.linalg.norm(V, axis=1, keepdims=True)
+    return V 
 
 
 __all__ = [
