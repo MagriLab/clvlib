@@ -1,25 +1,14 @@
 import numpy as np
 from typing import Callable, Tuple, Union
-
 import scipy.linalg
-
-# Optional Numba import: fall back to a no-op decorator if unavailable
-try:  # pragma: no cover - optional dependency handling
-    from numba import njit  # type: ignore
-except Exception:  # pragma: no cover - if numba is not installed
-    def njit(*_args, **_kwargs):  # type: ignore
-        def _wrap(func):
-            return func
-
-        return _wrap
-
+from numba import njit
 from .steppers import VariationalStepper
 
 
 QRSolver = Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]]
 
 
-@njit(fastmath=True)
+@njit
 def gram_schmidt_qr(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     m, n = A.shape
     Q = np.zeros((m, n), dtype=np.float64)
@@ -68,12 +57,9 @@ def _qr_numba(Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 _QR_METHODS = {
     "householder": _qr_householder,
-    "scipy": _qr_householder,
-    "qr": _qr_householder,
     "gs": _qr_numba,
     "gram-schmidt": _qr_numba,
     "gram_schmidt": _qr_numba,
-    "numba": _qr_numba,
 }
 
 

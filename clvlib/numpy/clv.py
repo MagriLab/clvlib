@@ -37,9 +37,7 @@ def _upwind_ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
 
 
 _GINELLI_METHODS = {
-    "standard": _ginelli,
     "ginelli": _ginelli,
-    "backward": _ginelli,
     "upwind": _upwind_ginelli,
     "upwind_ginelli": _upwind_ginelli,
 }
