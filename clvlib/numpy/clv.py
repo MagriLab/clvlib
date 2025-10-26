@@ -45,7 +45,7 @@ _GINELLI_METHODS = {
 }
 
 
-def _clvs(Q: np.ndarray, R: np.ndarray, *, ginelli_method: str = "standard") -> np.ndarray:
+def _clvs(Q: np.ndarray, R: np.ndarray, *, ginelli_method: str = "ginelli") -> np.ndarray:
     """Dispatch CLV reconstruction to the selected Ginelli variant."""
 
     try:

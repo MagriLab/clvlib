@@ -51,7 +51,7 @@ _GINELLI_METHODS = {
 }
 
 
-def _clvs(Q: Tensor, R: Tensor, *, ginelli_method: str = "standard") -> Tensor:
+def _clvs(Q: Tensor, R: Tensor, *, ginelli_method: str = "ginelli") -> Tensor:
     """Dispatch CLV reconstruction to the selected Ginelli variant."""
     try:
         solver = _GINELLI_METHODS[ginelli_method.lower()]
