@@ -2,17 +2,6 @@ import torch
 
 Tensor = torch.Tensor
 
-
-def _normalize(A: Tensor) -> Tensor:
-    return A / torch.linalg.norm(A, dim=0, keepdim=True)
-
-
-def _solve_upper_triangular(R: Tensor, C: Tensor) -> Tensor:
-    if hasattr(torch.linalg, "solve_triangular"):
-        return torch.linalg.solve_triangular(R, C, upper=True)
-    return torch.triangular_solve(C, R, upper=True).solution
-
-
 def _ginelli(Q: Tensor, R: Tensor) -> Tensor:
     """Backward (standard) Ginelli algorithm."""
     n_time, n_dim, n_lyap = Q.shape
@@ -22,8 +11,9 @@ def _ginelli(Q: Tensor, R: Tensor) -> Tensor:
     V[-1] = Q[-1] @ C
 
     for i in reversed(range(n_time - 1)):
-        C = _solve_upper_triangular(R[i], C)
-        V[i] = Q[i] @ _normalize(C)
+        C = torch.linalg.solve_triangular(R[i], C, upper=True)
+        C /= torch.norm(C, dim=0, keepdim=True)
+        V[i] = Q[i] @ C
     return V
 
 
@@ -36,16 +26,14 @@ def _upwind_ginelli(Q: Tensor, R: Tensor) -> Tensor:
     V[-1] = Q[-1] @ C
 
     for i in reversed(range(n_time - 1)):
-        C = _solve_upper_triangular(R[i + 1], C)
-        C = _normalize(C)
+        C = torch.linalg.solve_triangular(R[i+1], C, upper=True)
+        C /= torch.norm(C, dim=0, keepdim=True)
         V[i] = Q[i] @ C
     return V
 
 
 _GINELLI_METHODS = {
-    "standard": _ginelli,
     "ginelli": _ginelli,
-    "backward": _ginelli,
     "upwind": _upwind_ginelli,
     "upwind_ginelli": _upwind_ginelli,
 }
@@ -67,5 +55,4 @@ def _clvs(Q: Tensor, R: Tensor, *, ginelli_method: str = "ginelli") -> Tensor:
 
 __all__ = [
     "_clvs",
-    "_normalize_columns",
 ]

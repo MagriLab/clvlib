@@ -6,8 +6,7 @@ Tensor = torch.Tensor
 
 def compute_angles(V1: Tensor, V2: Tensor) -> Tuple[Tensor, Tensor]:
     """Compute angles between corresponding columns of V1 and V2."""
-    cos_thetas = torch.einsum("ij,ij->j", V1, V2)
-    cos_thetas = torch.clamp(cos_thetas, -1.0, 1.0)
+    cos_thetas = torch.einsum("ij,ij->i", V1, V2)
     thetas = torch.arccos(cos_thetas)
     return cos_thetas, thetas
 

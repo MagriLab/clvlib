@@ -81,7 +81,6 @@ def lyap_analysis_from_ic(
     *args,
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
-    return_trajectory: bool = False,
     qr_method: str = "householder",
     ginelli_method: str = "standard",
 ) -> Union[
@@ -102,9 +101,7 @@ def lyap_analysis_from_ic(
         qr_method=qr_method,
     )
     CLV_history = _clvs(BLV_history, R_history, ginelli_method=ginelli_method)
-    if return_trajectory:
-        return LE, LE_history, BLV_history, CLV_history, trajectory
-    return LE, LE_history, BLV_history, CLV_history
+    return LE, LE_history, BLV_history, CLV_history, trajectory
 
 
 def lyap_exp_from_ic(
@@ -116,7 +113,6 @@ def lyap_exp_from_ic(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     return_blv: bool = False,
-    return_trajectory: bool = False,
     qr_method: str = "householder",
 ) -> Union[
     Tuple[Tensor, Tensor],
@@ -136,13 +132,9 @@ def lyap_exp_from_ic(
         stepper=step,
         qr_method=qr_method,
     )
-    if return_blv and return_trajectory:
-        return LE, LE_history, BLV_history, trajectory
     if return_blv:
-        return LE, LE_history, BLV_history
-    if return_trajectory:
-        return LE, LE_history, trajectory
-    return LE, LE_history
+        return LE, LE_history, BLV_history, trajectory
+    return LE, LE_history, trajectory
 
 
 def _validate_lyap_inputs(

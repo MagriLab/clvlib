@@ -44,7 +44,6 @@ QRSolver = Callable[[Tensor], Tuple[Tensor, Tensor]]
 
 _QR_METHODS = {
     "householder": _qr_householder,
-    "qr": _qr_householder,
     "gs": _qr_gram_schmidt,
     "gram-schmidt": _qr_gram_schmidt,
     "gram_schmidt": _qr_gram_schmidt,

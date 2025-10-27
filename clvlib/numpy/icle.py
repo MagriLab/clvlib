@@ -4,7 +4,7 @@ from typing import Callable
 
 def compute_ICLE(
     jacobian_function: Callable,
-    solution: np.ndarray,
+    trajectory: np.ndarray,
     time: np.ndarray,
     CLV_history: np.ndarray,
     *args,
@@ -17,12 +17,12 @@ def compute_ICLE(
         raise ValueError("k_step must be at least 1.")
     if time.ndim != 1:
         raise ValueError("time must be one-dimensional.")
-    if solution.ndim != 2:
+    if trajectory.ndim != 2:
         raise ValueError("solution must be two-dimensional.")
     if CLV_history.ndim != 3:
         raise ValueError("CLV_history must be three-dimensional.")
 
-    n_time, n_state = solution.shape
+    n_time, n_state = trajectory.shape
     n_samples, n_clv_state, m = CLV_history.shape
     if n_state != n_clv_state:
         raise ValueError("solution and CLV_history must share the same state dimension.")
@@ -39,7 +39,7 @@ def compute_ICLE(
             "CLV history length is incompatible with the provided solution/time for this k_step."
         )
 
-    states = solution[sample_indices, :]
+    states = trajectory[sample_indices, :]
     times = time[sample_indices]
 
     return _compute_icle_series(jacobian_function, states, times, CLV_history, *args)

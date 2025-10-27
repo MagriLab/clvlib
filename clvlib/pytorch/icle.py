@@ -6,7 +6,7 @@ Tensor = torch.Tensor
 
 def compute_ICLE(
     jacobian_function: Callable,
-    solution: Tensor,
+    trajectory: Tensor,
     time: Tensor,
     CLV_history: Tensor,
     *args,
@@ -19,17 +19,17 @@ def compute_ICLE(
         raise ValueError("k_step must be at least 1.")
     if time.ndim != 1:
         raise ValueError("time must be one-dimensional.")
-    if solution.ndim != 2:
+    if trajectory.ndim != 2:
         raise ValueError("solution must be two-dimensional.")
     if CLV_history.ndim != 3:
         raise ValueError("CLV_history must be three-dimensional.")
 
-    n_time, n_state = solution.shape
+    n_time, n_state = trajectory.shape
     n_samples, n_clv_state, m = CLV_history.shape
     if n_state != n_clv_state:
-        raise ValueError("solution and CLV_history must share the same state dimension.")
+        raise ValueError("trajectory and CLV_history must share the same state dimension.")
     if n_time != time.shape[0]:
-        raise ValueError("solution and time must share the same number of samples.")
+        raise ValueError("trajectory  and time must share the same number of samples.")
     if n_samples == 0:
         raise ValueError("CLV_history must contain at least one time sample.")
 
@@ -43,8 +43,8 @@ def compute_ICLE(
             "CLV history length is incompatible with the provided solution/time for this k_step."
         )
 
-    solution_indices = sample_indices.to(solution.device)
-    states = solution.index_select(0, solution_indices)
+    solution_indices = sample_indices.to(trajectory.device)
+    states = trajectory.index_select(0, solution_indices)
     times = time.index_select(0, sample_indices)
 
     return _compute_icle_series(jacobian_function, states, times, CLV_history, *args)
