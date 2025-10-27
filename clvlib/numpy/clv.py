@@ -2,10 +2,6 @@ import numpy as np
 import scipy.linalg
 
 
-def _normalize(A: np.ndarray) -> np.ndarray:
-    return A / np.linalg.norm(A, axis=0, keepdims=True)
-
-
 def _ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     """Backward (standard) Ginelli algorithm."""
 
@@ -17,8 +13,9 @@ def _ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
 
     for i in reversed(range(n_time - 1)):
         C = scipy.linalg.solve_triangular(R[i], C, lower=False, overwrite_b=True, check_finite=False)
-        V[i] = Q[i] @ _normalize(C)
-    return V
+        C /= np.linalg.norm(C, axis=0, keepdims=True)
+        V[i] = Q[i] @ C
+    return V 
 
 
 def _upwind_ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
@@ -32,7 +29,8 @@ def _upwind_ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
 
     for i in reversed(range(n_time - 1)):
         C = scipy.linalg.solve_triangular(R[i + 1], C, lower=False, overwrite_b=True, check_finite=False)
-        V[i] = Q[i] @ _normalize(C)
+        C /= np.linalg.norm(C, axis=0, keepdims=True)
+        V[i] = Q[i] @ C
     return V
 
 
@@ -59,6 +57,5 @@ def _clvs(Q: np.ndarray, R: np.ndarray, *, ginelli_method: str = "ginelli") -> n
 
 
 __all__ = [
-    "_clvs",
-    "_normalize_columns",
+    "_clvs"
 ]

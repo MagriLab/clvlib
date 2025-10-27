@@ -15,7 +15,7 @@ def lyap_analysis(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     qr_method: str = "householder",
-    ginelli_method: str = "standard",
+    ginelli_method: str = "ginelli",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Run Lyapunov-exponent integration and compute the associated CLVs.
@@ -91,7 +91,7 @@ def lyap_analysis_from_ic(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     qr_method: str = "householder",
-    ginelli_method: str = "standard",
+    ginelli_method: str = "ginelli",
 ) -> Union[
     Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
     Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray],
@@ -127,7 +127,6 @@ def lyap_exp_from_ic(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     return_blv: bool = False,
-    return_trajectory: bool = False,
     qr_method: str = "householder",
 ) -> Union[
     Tuple[np.ndarray, np.ndarray],
@@ -151,13 +150,9 @@ def lyap_exp_from_ic(
         stepper=step,
         qr_method=qr_method,
     )
-    if return_blv and return_trajectory:
-        return LE, LE_history, BLV_history, trajectory
     if return_blv:
-        return LE, LE_history, BLV_history
-    if return_trajectory:
-        return LE, LE_history, trajectory  # type: ignore[return-value]
-    return LE, LE_history
+        return LE, LE_history, BLV_history, trajectory
+    return LE, LE_history, trajectory
 
 
 def _validate_lyap_inputs(
@@ -239,7 +234,7 @@ def _compute_lyap_outputs(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     qr_method: str = "householder",
-    ginelli_method: str = "standard",
+    ginelli_method: str = "ginelli",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     LE, LE_history, Q_history, R_history = run_variational_integrator(
         f,

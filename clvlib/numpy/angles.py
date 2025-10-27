@@ -3,24 +3,24 @@ import scipy.linalg
 from typing import Tuple
 
 
-def compute_angles(V1: np.ndarray, V2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Compute angles between vectors in V1 and V2 (column-wise)."""
-    cos_thetas = np.einsum("ij,ij->j", V1, V2)
+def compute_angles(v1: np.ndarray, v2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Compute angles between vectors in v1 and v2 (column-wise)."""
+    cos_thetas = np.einsum("ij,ij->i", v1, v2)
     thetas = np.arccos(cos_thetas)
     return cos_thetas, thetas
 
 
-def principal_angles(V1: np.ndarray, V2: np.ndarray) -> np.ndarray:
+def principal_angles(v1: np.ndarray, v2: np.ndarray) -> np.ndarray:
     """Principal angles (radians) between subspaces spanned by columns of V1 and V2.
 
     Time-first convention: V1 has shape (nt, n, m1), V2 has shape (nt, n, m2).
     Returns array of shape (nt, min(m1, m2)).
     """
-    nt, _, m1 = V1.shape
-    _, _, m2 = V2.shape
+    nt, _, m1 = v1.shape
+    _, _, m2 = v2.shape
     theta = np.empty((nt, min(m1, m2)), dtype=float)
     for i in range(nt):
-        theta[i] = scipy.linalg.subspace_angles(V1[i], V2[i])
+        theta[i] = np.squeeze(scipy.linalg.subspace_angles(v1[i], v2[i]))
     return theta
 
 
