@@ -6,8 +6,6 @@ from typing import Tuple
 def compute_angles(V1: np.ndarray, V2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Compute angles between vectors in V1 and V2 (column-wise)."""
     cos_thetas = np.einsum("ij,ij->j", V1, V2)
-    # Clamp for numerical safety to avoid NaNs from tiny overshoots
-    cos_thetas = np.clip(cos_thetas, -1.0, 1.0)
     thetas = np.arccos(cos_thetas)
     return cos_thetas, thetas
 

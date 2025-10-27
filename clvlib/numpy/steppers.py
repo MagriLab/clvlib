@@ -81,12 +81,11 @@ def _discrete_var_step(
     t: float,
     x: np.ndarray,
     V: np.ndarray,
-    dt: float,
+    dt: float = 0.0,
     *args,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Discrete-time variational step: x_{k+1} = f(x_k), V_{k+1} = Df(x_k) V_k.
-
-    The ``dt`` argument is unused and present for API compatibility.
+    Note that dt is ignored in this stepper.
     """
     x_next = f(t, x, *args)
     V_next = Df(t, x, *args) @ V

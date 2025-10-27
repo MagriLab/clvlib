@@ -24,6 +24,7 @@ def lyap_analysis(
     """
     n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
+    step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, CLV_history = _compute_lyap_outputs(
         f,
         Df,
@@ -31,7 +32,7 @@ def lyap_analysis(
         t,
         *args,
         k_step=k_step,
-        stepper=stepper,
+        stepper=step,
         qr_method=qr_method,
         ginelli_method=ginelli_method,
     )
@@ -63,6 +64,7 @@ def lyap_exp(
     """
     _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
+    step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, _ = run_variational_integrator(
         f,
         Df,
@@ -70,7 +72,7 @@ def lyap_exp(
         t,
         *args,
         k_step=k_step,
-        stepper=resolve_stepper(stepper),
+        stepper=step,
         qr_method=qr_method,
     )
 
@@ -88,7 +90,6 @@ def lyap_analysis_from_ic(
     *args,
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
-    return_trajectory: bool = False,
     qr_method: str = "householder",
     ginelli_method: str = "standard",
 ) -> Union[
@@ -97,7 +98,7 @@ def lyap_analysis_from_ic(
 ]:
     """
     Run Lyapunov-exponent integration and compute CLVs starting from an initial condition.
-    Returns (LE, LE_history, BLV_history, CLV_history[, trajectory]).
+    Returns (LE, LE_history, BLV_history, CLV_history, trajectory).
     """
     _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
 
@@ -113,9 +114,8 @@ def lyap_analysis_from_ic(
         qr_method=qr_method,
     )
     CLV_history = _clvs(BLV_history, R_history, ginelli_method=ginelli_method)
-    if return_trajectory:
-        return LE, LE_history, BLV_history, CLV_history, trajectory
-    return LE, LE_history, BLV_history, CLV_history
+
+    return LE, LE_history, BLV_history, CLV_history, trajectory
 
 
 def lyap_exp_from_ic(
@@ -241,7 +241,6 @@ def _compute_lyap_outputs(
     qr_method: str = "householder",
     ginelli_method: str = "standard",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    step = resolve_stepper(stepper)
     LE, LE_history, Q_history, R_history = run_variational_integrator(
         f,
         Df,
@@ -249,7 +248,7 @@ def _compute_lyap_outputs(
         t,
         *args,
         k_step=k_step,
-        stepper=step,
+        stepper=stepper,
         qr_method=qr_method,
     )
     CLV_history = _clvs(Q_history, R_history, ginelli_method=ginelli_method)
