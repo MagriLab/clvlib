@@ -94,6 +94,7 @@ def _lyap_int(
     R_history = np.empty((nt, n, n), dtype=float)
     LE_history = np.empty((nt, n), dtype=float)
 
+    Q = np.eye(n, dtype=float)
     Q_history[0] = np.eye(n, dtype=float)
     R_history[0] = np.eye(n, dtype=float)
     LE_history[0] = 0.0
@@ -130,6 +131,7 @@ def _lyap_int_k_step(
     R_history = np.empty((n_step, n, n), dtype=float)
     LE_history = np.empty((n_step, n), dtype=float)
 
+    Q = np.eye(n, dtype=float)
     Q_history[0] = np.eye(n, dtype=float)
     R_history[0] = np.eye(n, dtype=float)
     LE_history[0] = 0.0
@@ -169,6 +171,7 @@ def _lyap_int_from_x0(
     trajectory = np.empty((nt, n), dtype=float)
     trajectory[0] = x0
 
+    Q = np.eye(n, dtype=float)
     Q_history = np.empty((nt, n, n), dtype=float)
     R_history = np.empty((nt, n, n), dtype=float)
     LE_history = np.empty((nt, n), dtype=float)
@@ -181,7 +184,7 @@ def _lyap_int_from_x0(
     log_sums = np.zeros(n, dtype=float)
 
     for i in range(nt - 1):
-        x, Q = stepper(f, Df, t[i], x, Q, dt, *args)
+        x, Q = stepper(f, Df, t[i], x, Q_history[i], dt, *args)
         trajectory[i + 1] = x
         Q, R = qr_solver(Q)
         Q_history[i + 1] = Q
@@ -228,7 +231,7 @@ def _lyap_int_k_step_from_x0(
 
     j = 0
     for i in range(nt - 1):
-        x, Q = stepper(f, Df, t[i], x, Q, dt, *args)
+        x, Q = stepper(f, Df, t[i], x, Q_history[i], dt, *args)
         trajectory[i + 1] = x
         if (i + 1) % k_step == 0:
             Q, R = qr_solver(Q)
