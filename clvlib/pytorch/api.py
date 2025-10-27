@@ -21,6 +21,7 @@ def lyap_analysis(
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
+    step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, CLV_history = _compute_lyap_outputs(
         f,
         Df,
@@ -28,7 +29,7 @@ def lyap_analysis(
         t,
         *args,
         k_step=k_step,
-        stepper=stepper,
+        stepper=step,
         qr_method=qr_method,
         ginelli_method=ginelli_method,
     )
@@ -56,6 +57,7 @@ def lyap_exp(
 ) -> Union[Tuple[Tensor, Tensor], Tuple[Tensor, Tensor, Tensor]]:
     _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
+    step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, _ = run_variational_integrator(
         f,
         Df,
