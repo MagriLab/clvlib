@@ -234,7 +234,7 @@ def _compute_lyap_outputs(
     t: np.ndarray,
     *args,
     k_step: int = 1,
-    stepper: Union[str, VariationalStepper, None] = "rk4",
+    stepper: VariationalStepper,
     qr_method: str = "householder",
     ginelli_method: str = "ginelli",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

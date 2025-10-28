@@ -251,11 +251,9 @@ def run_variational_integrator(
     t: np.ndarray,
     *args,
     k_step: int = 1,
-    stepper: VariationalStepper = None,
+    stepper: VariationalStepper,
     qr_method: Union[str, QRSolver] = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    if stepper is None:
-        raise ValueError("stepper must be provided (use steppers.resolve_stepper)")
     qr_solver = _resolve_qr_method(qr_method)
     if k_step > 1:
         return _lyap_int_k_step(
@@ -271,15 +269,13 @@ def run_state_variational_integrator(
     t: np.ndarray,
     *args,
     k_step: int = 1,
-    stepper: VariationalStepper = None,
+    stepper: VariationalStepper,
     qr_method: Union[str, QRSolver] = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Integrate state and variational equations starting from ``x0``.
 
     Returns (LE_final, LE_history, Q_history, R_history, trajectory).
     """
-    if stepper is None:
-        raise ValueError("stepper must be provided (use steppers.resolve_stepper)")
     qr_solver = _resolve_qr_method(qr_method)
     if k_step > 1:
         return _lyap_int_k_step_from_x0(

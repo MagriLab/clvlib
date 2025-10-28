@@ -238,11 +238,9 @@ def run_variational_integrator(
     t: Tensor,
     *args,
     k_step: int = 1,
-    stepper: VariationalStepper = None,
+    stepper: VariationalStepper,
     qr_method: Union[str, QRSolver] = "householder",
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-    if stepper is None:
-        raise ValueError("stepper must be provided (use steppers.resolve_stepper)")
     qr_solver = _resolve_qr_method(qr_method)
     if k_step > 1:
         return _lyap_int_k_step(
@@ -258,11 +256,9 @@ def run_state_variational_integrator(
     t: Tensor,
     *args,
     k_step: int = 1,
-    stepper: VariationalStepper = None,
+    stepper: VariationalStepper,
     qr_method: Union[str, QRSolver] = "householder",
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-    if stepper is None:
-        raise ValueError("stepper must be provided (use steppers.resolve_stepper)")
     qr_solver = _resolve_qr_method(qr_method)
     if k_step > 1:
         return _lyap_int_k_step_from_x0(
