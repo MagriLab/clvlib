@@ -32,7 +32,7 @@ def gram_schmidt_qr(A: torch.Tensor):
 
 
 def _qr_householder(Q: Tensor) -> Tuple[Tensor, Tensor]:
-    return torch.linalg.qr(Q, mode="full")
+    return torch.linalg.qr(Q, mode="complete")
 
 
 def _qr_gram_schmidt(Q: Tensor) -> Tuple[Tensor, Tensor]:
