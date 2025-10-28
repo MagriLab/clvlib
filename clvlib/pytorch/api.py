@@ -218,7 +218,7 @@ def _compute_lyap_outputs(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     qr_method: str = "householder",
-    ginelli_method: str = "standard",
+    ginelli_method: str = "ginelli",
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     step = resolve_stepper(stepper)
     LE, LE_history, Q_history, R_history = run_variational_integrator(
