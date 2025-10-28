@@ -1,10 +1,10 @@
 # clvlib
 
-`clvlib` is a library for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) with a single API that works across NumPy and PyTorch backends. Under the hood it implements the Benettin algorithm[^benettin], giving you control over the re-orthonormalisation step through selectable QR routines: `householder` (SciPy-backed, fast, numerically robust) or `gram-schmidt` (Numba-powered and friendlier to some CLV post-processing).
+`clvlib` is a library for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) with NumPy and PyTorch backends. Under the hood it implements the Benettin algorithm[^benettin], giving you control over the re-orthonormalisation step through selectable QR routines: `householder` (SciPy-backed, fast, numerically robust) or `gram-schmidt` (Numba-powered and friendlier to some CLV post-processing).
 
-Householder-based updates may clash with the classical Ginelli reconstruction of CLVs[^ginelli], so this package also ships an alternative variant, `upwind_ginelli`, that remains stable with either QR option. Have a look at the tutorials for a deeper dive into the trade-offs.
+Householder-based updates may clash with the classical Ginelli reconstruction of CLVs[^ginelli], so this package introduces an alternative variant, `upwind_ginelli`, that remains stable with either QR option. Have a look at the tutorials for a deeper dive into the trade-offs.
 
-The variational stepper is modular. Standard Euler, RK2, RK4, and discrete-time steppers are bundled, but you can register your own functions for bespoke integrators, and, when working with NumPy, JIT-compile them with Numba for extra speed.
+The variational stepper is modular. Standard Euler, RK2, RK4, and discrete-time steppers are bundled, but you can register your own functions for the integrators, and, when working with NumPy, JIT-compile them with Numba for extra speed.
 
 ## Installation
 ```bash
