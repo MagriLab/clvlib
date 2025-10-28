@@ -74,8 +74,6 @@ icle = compute_ICLE(jacobian, traj, times, clv_history, k_step=1)
 ## License
 No explicit license is defined yet. Choose and add one (e.g., MIT, BSD-3-Clause) before distributing binaries.
 
-## References
-
 [^1]: Benettin, G., Galgani, L., Giorgilli, A., & Strelcyn, J.-M. (1980). Lyapunov characteristic exponents for smooth dynamical systems and for Hamiltonian systems; a method for computing all of them. Part 1: Theory. Meccanica, 15(1), 9–20.
 
 [^2]: Ginelli, F., Poggi, P., Turchi, A., Chaté, H., Livi, R., & Politi, A. (2007). Characterizing dynamics with covariant Lyapunov vectors. Physical Review Letters, 99(13), 130601.
