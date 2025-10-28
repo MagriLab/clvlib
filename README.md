@@ -71,6 +71,20 @@ angles = principal_angles(clv_history[:, :, -1:], clv_history[:, :, :-1])
 icle = compute_ICLE(jacobian, traj, times, clv_history, k_step=1)
 ```
 
+## Citation
+If `clvlib` contributes to published work, please cite it as:
+
+```bibtex
+@software{consonni_clvlib_2024,
+  author    = {Riccardo Consonni},
+  title     = {clvlib},
+  year      = {2024},
+  publisher = {GitHub},
+  note      = {Version 0.1.0},
+  url       = {https://github.com/rickthecatto/clvlib},
+}
+```
+
 ## License
 No explicit license is defined yet. Choose and add one (e.g., MIT, BSD-3-Clause) before distributing binaries.
 
