@@ -5,14 +5,14 @@ Tensor = torch.Tensor
 
 
 def compute_angles(V1: Tensor, V2: Tensor) -> Tuple[Tensor, Tensor]:
-    """Compute angles between corresponding columns of V1 and V2."""
+    """Compute angles between corresponding rows of V1 and V2. Only works for unit length vectors."""
     cos_thetas = torch.einsum("ij,ij->i", V1, V2)
     thetas = torch.arccos(cos_thetas)
     return cos_thetas, thetas
 
 
 def principal_angles(V1: Tensor, V2: Tensor) -> Tensor:
-    """Principal angles (radians) between subspaces spanned by columns of V1 and V2."""
+    """Principal angles (radians) between subspaces spanned by columns of V1 and V2. Only works for unit length vectors"""
     nt, _, m1 = V1.shape
     _, _, m2 = V2.shape
     dim = min(m1, m2)

@@ -95,7 +95,7 @@ def _lyap_int(
     LE_history = np.empty((nt, n), dtype=float)
 
     Q = np.eye(n, dtype=float)
-    Q_history[0] = np.eye(n, dtype=float)
+    Q_history[0] = Q
     R_history[0] = np.eye(n, dtype=float)
     LE_history[0] = 0.0
     log_sums = np.zeros(n, dtype=float)
@@ -132,7 +132,7 @@ def _lyap_int_k_step(
     LE_history = np.empty((n_step, n), dtype=float)
 
     Q = np.eye(n, dtype=float)
-    Q_history[0] = np.eye(n, dtype=float)
+    Q_history[0] = Q
     R_history[0] = np.eye(n, dtype=float)
     LE_history[0] = 0.0
     log_sums = np.zeros(n, dtype=float)
@@ -172,7 +172,7 @@ def _lyap_int_from_x0(
     trajectory[0] = x0
 
     Q = np.eye(n, dtype=float)
-    Q_history = np.empty((nt, n, n), dtype=float)
+    Q_history = Q
     R_history = np.empty((nt, n, n), dtype=float)
     LE_history = np.empty((nt, n), dtype=float)
 
@@ -224,7 +224,7 @@ def _lyap_int_k_step_from_x0(
     Q = np.eye(n, dtype=float)
     x = x0.astype(float, copy=True)
 
-    Q_history[0] = np.eye(n, dtype=float)
+    Q_history[0] = Q
     R_history[0] = np.eye(n, dtype=float)
     LE_history[0] = 0.0
     log_sums = np.zeros(n, dtype=float)

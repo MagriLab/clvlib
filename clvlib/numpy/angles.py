@@ -4,14 +4,14 @@ from typing import Tuple
 
 
 def compute_angles(v1: np.ndarray, v2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Compute angles between vectors in v1 and v2 (column-wise)."""
+    """Compute angles between vectors in v1 and v2 (row-wise). Only works for unit length vectors"""
     cos_thetas = np.einsum("ij,ij->i", v1, v2)
     thetas = np.arccos(cos_thetas)
     return cos_thetas, thetas
 
 
 def principal_angles(v1: np.ndarray, v2: np.ndarray) -> np.ndarray:
-    """Principal angles (radians) between subspaces spanned by columns of V1 and V2.
+    """Principal angles (radians) between subspaces spanned by columns of V1 and V2. Only works for unit length vectors
 
     Time-first convention: V1 has shape (nt, n, m1), V2 has shape (nt, n, m2).
     Returns array of shape (nt, min(m1, m2)).
