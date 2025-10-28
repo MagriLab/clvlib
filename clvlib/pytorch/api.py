@@ -65,7 +65,7 @@ def lyap_exp(
         t,
         *args,
         k_step=k_step,
-        stepper=resolve_stepper(stepper),
+        stepper=step,
         qr_method=qr_method,
     )
 

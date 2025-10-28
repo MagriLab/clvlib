@@ -4,8 +4,13 @@ from typing import Tuple
 
 
 def compute_angles(v1: np.ndarray, v2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Compute angles between vectors in v1 and v2 (row-wise). Only works for unit length vectors"""
+    """Compute angles between vectors in v1 and v2 (row-wise).
+
+    Assumes unit-length vectors along rows; clamps cosine to [-1, 1] for
+    numerical stability.
+    """
     cos_thetas = np.einsum("ij,ij->i", v1, v2)
+    cos_thetas = np.clip(cos_thetas, -1.0, 1.0)
     thetas = np.arccos(cos_thetas)
     return cos_thetas, thetas
 

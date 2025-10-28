@@ -85,7 +85,7 @@ def test_clvs_match_eigenvectors_in_linear_diagonal_case():
     traj = np.zeros((t.size, n), dtype=float)
 
     LE, LE_hist, BLV_hist, CLV_hist = lyap_analysis(
-        f, Df, traj, t, stepper="rk4", k_step=1, ginelli_method="standard"
+        f, Df, traj, t, stepper="rk4", k_step=1, ginelli_method="ginelli"
     )
 
     I = np.eye(n, dtype=float)
