@@ -1,6 +1,8 @@
 # clvlib
 
-`clvlib` provides variational integrators and analysis utilities for Lyapunov exponents and Covariant Lyapunov Vectors (CLVs). It bundles consistent NumPy and PyTorch backends: integrate a trajectory, re-orthonormalise variational bases, extract CLVs via Ginelli’s algorithm, and evaluate helper diagnostics such as principal angles or instantaneous covariant Lyapunov exponents (ICLEs).
+`clvlib` provides utilities for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs). This library has implementations in both `NumPy` and `PyTorch`. The Lyapunov exponents and backward Lyapunov vectors are computed with the Benettin algorithm, and the library gives the possibility to select the QR decomposition to be used. In particular, there are two possibilities, either using Householder reflection `householder` or Grham-Schmidt decomposition `grahm-schmidt`. The former is faster, as it is called using scipy, and more stable, however it interacts weirdly with Ginelli's algorithm for computation of the CLVs, for more information check the tutorials. The latter is slower and more unstable but ineracts better with Ginelli's algorithm.
+
+To overcome this incompatibility between the Househodler reflections we introduce a novel modification to Ginelli's algorithm, that we call upwind Ginelli `upwind_ginelli`,
 
 ## Installation
 ```bash
@@ -52,7 +54,7 @@ LE, LE_history, blv_history, clv_history, traj = lyap_analysis_from_ic(
     times,
     stepper="rk4",
     qr_method="householder",
-    ginelli_method="ginelli",
+    ginelli_method="upwind_ginelli",
 )
 
 print("Asymptotic Lyapunov exponents:", LE)
