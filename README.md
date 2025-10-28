@@ -74,13 +74,11 @@ icle = compute_ICLE(jacobian, traj, times, clv_history, k_step=1)
 ## Citation
 If `clvlib` contributes to published work, please cite it as:
 
-```bibtex
-@software{consonni_clvlib_2024,
+```
+@misc{consonni_clvlib_2024,
   author    = {Riccardo Consonni},
   title     = {clvlib},
-  year      = {2024},
-  publisher = {GitHub},
-  note      = {Version 0.1.0},
+  year      = {2025},
   url       = {https://github.com/rickthecatto/clvlib},
 }
 ```
