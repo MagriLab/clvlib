@@ -16,7 +16,7 @@ dependencies = [
   "numba>=0.56",
   "torch>=1.12",
 ]
-readme = {text = "Utilities to compute Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) via variational integration, Gram–Schmidt re-orthonormalization, and Ginelli’s algorithm."}
+readme = { text = "Utilities to compute Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) via variational integration, Gram–Schmidt re-orthonormalization, and Ginelli’s algorithm.", "content-type" = "text/plain" }
 authors = [
   {name = "clvlib authors"}
 ]

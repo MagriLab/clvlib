@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: clvlib
+Version: 0.1.0
+Summary: Lyapunov exponents and Covariant Lyapunov Vectors utilities
+Author: clvlib authors
+Requires-Python: >=3.9
+Description-Content-Type: text/plain
+Requires-Dist: numpy>=1.22
+Requires-Dist: scipy>=1.8
+Requires-Dist: numba>=0.56
+Requires-Dist: torch>=1.12
+Provides-Extra: dev
+Requires-Dist: pytest>=7; extra == "dev"
+Requires-Dist: ruff>=0.5; extra == "dev"
+Requires-Dist: black>=24.3; extra == "dev"
+Requires-Dist: mypy>=1.10; extra == "dev"
+
+Utilities to compute Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) via variational integration, Gram–Schmidt re-orthonormalization, and Ginelli’s algorithm.
