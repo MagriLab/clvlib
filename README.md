@@ -1,13 +1,6 @@
 # clvlib
 
-Utilities to integrate Lyapunov exponents and compute Covariant Lyapunov Vectors (CLVs) with NumPy and PyTorch backends.
-
-## Highlights
-- Variational integrators with RK4/RK2/Euler steppers, optional discrete-time maps, and k-step sampling.
-- Multiple QR decompositions (Householder or Gram–Schmidt) backed by SciPy/Numba (NumPy) or native Torch ops.
-- Ginelli’s algorithm for CLVs plus helpers for principal angles and instantaneous CLVs (ICLEs).
-- Identical APIs for both `clvlib.numpy` and `clvlib.pytorch` modules to ease CPU/GPU workflows.
-- Fully type annotated codebase validated by `mypy`, `ruff`, and `pytest`.
+`clvlib` provides variational integrators and analysis utilities for Lyapunov exponents and Covariant Lyapunov Vectors (CLVs). It bundles consistent NumPy and PyTorch backends: integrate a trajectory, re-orthonormalise variational bases, extract CLVs via Ginelli’s algorithm, and evaluate helper diagnostics such as principal angles or instantaneous covariant Lyapunov exponents (ICLEs).
 
 ## Installation
 ```bash
@@ -19,7 +12,7 @@ For development work (tests, linters, typing):
 pip install -e .[dev]
 ```
 
-## Quickstart (NumPy)
+## Quickstart
 ```python
 import numpy as np
 from clvlib.numpy import lyap_analysis_from_ic
@@ -52,7 +45,7 @@ def jacobian(t: float, x: np.ndarray) -> np.ndarray:
 times = np.linspace(0.0, 40.0, 4001)
 x0 = np.array([8.0, 0.0, 30.0], dtype=float)
 
-LE, history, blv_history, clv_history, traj = lyap_analysis_from_ic(
+LE, LE_history, blv_history, clv_history, traj = lyap_analysis_from_ic(
     lorenz,
     jacobian,
     x0,
@@ -63,45 +56,6 @@ LE, history, blv_history, clv_history, traj = lyap_analysis_from_ic(
 )
 
 print("Asymptotic Lyapunov exponents:", LE)
-```
-
-## Quickstart (PyTorch)
-```python
-import torch
-from clvlib.pytorch import lyap_exp_from_ic
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-SIGMA = torch.tensor(10.0, device=device)
-RHO = torch.tensor(28.0, device=device)
-BETA = torch.tensor(8.0 / 3.0, device=device)
-
-def lorenz(t: float, x: torch.Tensor) -> torch.Tensor:
-    return torch.stack(
-        (
-            SIGMA * (x[1] - x[0]),
-            x[0] * (RHO - x[2]) - x[1],
-            x[0] * x[1] - BETA * x[2],
-        )
-    )
-
-def jacobian(t: float, x: torch.Tensor) -> torch.Tensor:
-    return torch.tensor(
-        [
-            [-SIGMA, SIGMA, 0.0],
-            [RHO - x[2], -1.0, -x[0]],
-            [x[1], x[0], -BETA],
-        ],
-        dtype=x.dtype,
-        device=x.device,
-    )
-
-times = torch.linspace(0.0, 40.0, 4001, device=device)
-x0 = torch.tensor([8.0, 0.0, 30.0], dtype=torch.float64, device=device)
-
-LE, history, trajectory = lyap_exp_from_ic(
-    lorenz, jacobian, x0, times, stepper="rk4", qr_method="householder"
-)
 ```
 
 ## Angles and instantaneous CLVs
