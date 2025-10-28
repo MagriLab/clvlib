@@ -10,3 +10,7 @@ __pycache__/
 benchmarks/*.npz
 *.ipynb
 !tutorials/*.ipynb
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
