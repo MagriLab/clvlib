@@ -100,7 +100,7 @@ def test_clvs_equal_eigenvectors_for_diagonal_system():
     trajectory = np.zeros((t.size, n), dtype=float)
 
     LE, LE_hist, BLV_hist, CLV_hist = lyap_analysis(
-        f, Df, trajectory, t, stepper="rk4", k_step=1, ginelli_method="standard"
+        f, Df, trajectory, t, stepper="rk4", k_step=1, ginelli_method="ginelli"
     )
 
     # Canonical eigenvectors for diagonal A

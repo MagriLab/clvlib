@@ -20,7 +20,7 @@ def compute_ICLE(
     if time.ndim != 1:
         raise ValueError("time must be one-dimensional.")
     if trajectory.ndim != 2:
-        raise ValueError("solution must be two-dimensional.")
+        raise ValueError("trajectory must be two-dimensional.")
     if CLV_history.ndim != 3:
         raise ValueError("CLV_history must be three-dimensional.")
 
@@ -40,11 +40,11 @@ def compute_ICLE(
         raise RuntimeError("Unexpected number of samples inferred from CLV_history.")
     if sample_indices[-1].item() >= n_time:
         raise ValueError(
-            "CLV history length is incompatible with the provided solution/time for this k_step."
+            "CLV history length is incompatible with the provided trajectory/time for this k_step."
         )
 
-    solution_indices = sample_indices.to(trajectory.device)
-    states = trajectory.index_select(0, solution_indices)
+    trajectory_indices = sample_indices.to(trajectory.device)
+    states = trajectory.index_select(0, trajectory_indices)
     times = time.index_select(0, sample_indices)
 
     return _compute_icle_series(jacobian_function, states, times, CLV_history, *args)

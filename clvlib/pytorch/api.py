@@ -17,7 +17,7 @@ def lyap_analysis(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     qr_method: str = "householder",
-    ginelli_method: str = "standard",
+    ginelli_method: str = "ginelli",
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
@@ -84,7 +84,7 @@ def lyap_analysis_from_ic(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     qr_method: str = "householder",
-    ginelli_method: str = "standard",
+    ginelli_method: str = "ginelli",
 ) -> Union[
     Tuple[Tensor, Tensor, Tensor, Tensor],
     Tuple[Tensor, Tensor, Tensor, Tensor, Tensor],

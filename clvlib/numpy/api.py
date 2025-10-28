@@ -20,7 +20,7 @@ def lyap_analysis(
     """
     Run Lyapunov-exponent integration and compute the associated CLVs.
     Set `k_step` > 1 to use the k-step variational integrator.
-    Returns (BLV_history, LE, LE_history, CLV_history).
+    Returns (LE, LE_history, BLV_history, CLV_history).
     """
     n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
 
@@ -135,7 +135,7 @@ def lyap_exp_from_ic(
 ]:
     """
     Run Lyapunov-exponent integration from an initial condition.
-    Returns (LE, LE_history[, BLV_history][, trajectory]).
+    Returns (LE, LE_history[, BLV_history], trajectory).
     """
     _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
 

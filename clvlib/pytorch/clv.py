@@ -3,7 +3,7 @@ import torch
 Tensor = torch.Tensor
 
 def _ginelli(Q: Tensor, R: Tensor) -> Tensor:
-    """Backward (standard) Ginelli algorithm."""
+    """Ginelli algorithm."""
     n_time, n_dim, n_lyap = Q.shape
     V = torch.empty((n_time, n_dim, n_lyap), dtype=Q.dtype, device=Q.device)
 

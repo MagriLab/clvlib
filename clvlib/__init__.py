@@ -22,5 +22,4 @@ __all__ = [
     "resolve_stepper",
     "register_stepper",
     "VariationalStepper",
-    "numpy",
 ]

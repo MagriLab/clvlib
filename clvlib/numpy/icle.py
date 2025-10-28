@@ -18,16 +18,16 @@ def compute_ICLE(
     if time.ndim != 1:
         raise ValueError("time must be one-dimensional.")
     if trajectory.ndim != 2:
-        raise ValueError("solution must be two-dimensional.")
+        raise ValueError("trajectory must be two-dimensional.")
     if CLV_history.ndim != 3:
         raise ValueError("CLV_history must be three-dimensional.")
 
     n_time, n_state = trajectory.shape
     n_samples, n_clv_state, m = CLV_history.shape
     if n_state != n_clv_state:
-        raise ValueError("solution and CLV_history must share the same state dimension.")
+        raise ValueError("trajectory and CLV_history must share the same state dimension.")
     if n_time != time.size:
-        raise ValueError("solution and time must share the same number of samples.")
+        raise ValueError("trajectory and time must share the same number of samples.")
     if n_samples == 0:
         raise ValueError("CLV_history must contain at least one time sample.")
 
@@ -36,7 +36,7 @@ def compute_ICLE(
         raise RuntimeError("Unexpected number of samples inferred from CLV_history.")
     if sample_indices[-1] >= n_time:
         raise ValueError(
-            "CLV history length is incompatible with the provided solution/time for this k_step."
+            "CLV history length is incompatible with the provided trajectory/time for this k_step."
         )
 
     states = trajectory[sample_indices, :]
