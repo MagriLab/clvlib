@@ -15,9 +15,9 @@ def test_principal_angles_identical_subspaces():
     nt = 3
     n = 3
     m = 2
-    I = np.eye(n, dtype=float)
-    V1 = np.repeat(I[:, :m][None, :, :], nt, axis=0)
-    V2 = np.repeat(I[:, :m][None, :, :], nt, axis=0)
+    Id = np.eye(n, dtype=float)
+    V1 = np.repeat(Id[:, :m][None, :, :], nt, axis=0)
+    V2 = np.repeat(Id[:, :m][None, :, :], nt, axis=0)
     angles = principal_angles(V1, V2)
     assert angles.shape == (nt, m)
     assert np.allclose(angles, 0.0, atol=1e-12)
@@ -88,8 +88,8 @@ def test_clvs_match_eigenvectors_in_linear_diagonal_case():
         f, Df, traj, t, stepper="rk4", k_step=1, ginelli_method="ginelli"
     )
 
-    I = np.eye(n, dtype=float)
+    Id = np.eye(n, dtype=float)
     for k in range(n):
-        e = I[:, k]
+        e = Id[:, k]
         dots = np.einsum("ti,i->t", CLV_hist[:, :, k], e)
         assert np.allclose(np.abs(dots), 1.0, atol=1e-6)

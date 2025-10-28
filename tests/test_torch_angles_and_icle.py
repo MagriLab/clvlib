@@ -17,9 +17,9 @@ def test_torch_principal_angles_identical_subspaces():
     nt = 3
     n = 3
     m = 2
-    I = torch.eye(n, dtype=dtype)
-    V1 = I[:, :m].unsqueeze(0).repeat(nt, 1, 1)
-    V2 = I[:, :m].unsqueeze(0).repeat(nt, 1, 1)
+    Id = torch.eye(n, dtype=dtype)
+    V1 = Id[:, :m].unsqueeze(0).repeat(nt, 1, 1)
+    V2 = Id[:, :m].unsqueeze(0).repeat(nt, 1, 1)
     angles = principal_angles(V1, V2)
     assert angles.shape == (nt, m)
     assert torch.allclose(angles, torch.zeros((nt, m), dtype=dtype), atol=1e-12, rtol=0.0)
@@ -92,8 +92,8 @@ def test_torch_clvs_match_eigenvectors_in_linear_diagonal_case():
         f, Df, traj, t, stepper="rk4", k_step=1, ginelli_method="ginelli"
     )
 
-    I = torch.eye(n, dtype=dtype)
+    Id = torch.eye(n, dtype=dtype)
     for k in range(n):
-        e = I[:, k]
+        e = Id[:, k]
         dots = torch.einsum("ti,i->t", CLV_hist[:, :, k], e)
         assert torch.allclose(torch.abs(dots), torch.ones_like(dots), atol=1e-6, rtol=0.0)
