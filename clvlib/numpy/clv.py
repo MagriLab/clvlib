@@ -12,10 +12,12 @@ def _ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     V[-1] = Q[-1] @ C
 
     for i in reversed(range(n_time - 1)):
-        C = scipy.linalg.solve_triangular(R[i], C, lower=False, overwrite_b=True, check_finite=False)
+        C = scipy.linalg.solve_triangular(
+            R[i], C, lower=False, overwrite_b=True, check_finite=False
+        )
         C /= np.linalg.norm(C, axis=0, keepdims=True)
         V[i] = Q[i] @ C
-    return V 
+    return V
 
 
 def _upwind_ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
@@ -28,7 +30,9 @@ def _upwind_ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     V[-1] = Q[-1] @ C
 
     for i in reversed(range(n_time - 1)):
-        C = scipy.linalg.solve_triangular(R[i + 1], C, lower=False, overwrite_b=True, check_finite=False)
+        C = scipy.linalg.solve_triangular(
+            R[i + 1], C, lower=False, overwrite_b=True, check_finite=False
+        )
         C /= np.linalg.norm(C, axis=0, keepdims=True)
         V[i] = Q[i] @ C
     return V
@@ -41,7 +45,9 @@ _GINELLI_METHODS = {
 }
 
 
-def _clvs(Q: np.ndarray, R: np.ndarray, *, ginelli_method: str = "ginelli") -> np.ndarray:
+def _clvs(
+    Q: np.ndarray, R: np.ndarray, *, ginelli_method: str = "ginelli"
+) -> np.ndarray:
     """Dispatch CLV reconstruction to the selected Ginelli variant."""
 
     try:
@@ -53,9 +59,7 @@ def _clvs(Q: np.ndarray, R: np.ndarray, *, ginelli_method: str = "ginelli") -> n
         ) from exc
 
     V = solver(Q, R)
-    return V 
+    return V
 
 
-__all__ = [
-    "_clvs"
-]
+__all__ = ["_clvs"]

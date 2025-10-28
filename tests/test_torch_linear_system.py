@@ -1,8 +1,7 @@
 import pytest
 from clvlib.pytorch import lyap_exp, lyap_analysis
+
 torch = pytest.importorskip("torch")
-
-
 
 
 def _make_linear_system(eigs):
@@ -26,10 +25,14 @@ def test_torch_lyap_exp_linear_system_householder():
     steps = 2000
     t = torch.linspace(0.0, T, steps + 1, dtype=torch.float64)
     n = len(eigs)
-    trajectory = torch.zeros((t.numel(), n), dtype=torch.float64)  # Fixed point trajectory in 0
+    trajectory = torch.zeros(
+        (t.numel(), n), dtype=torch.float64
+    )  # Fixed point trajectory in 0
 
     LE, LE_history = lyap_exp(f, Df, trajectory, t, stepper="rk4")
-    expected = torch.sort(torch.tensor(eigs, dtype=torch.float64), descending=True).values
+    expected = torch.sort(
+        torch.tensor(eigs, dtype=torch.float64), descending=True
+    ).values
     assert torch.allclose(torch.sort(LE, descending=True).values, expected, atol=1e-2)
     assert LE_history.shape == (t.numel(), n)
 
@@ -45,7 +48,9 @@ def test_torch_lyap_exp_linear_system_gs_qr():
     trajectory = torch.zeros((t.numel(), n), dtype=torch.float64)
 
     LE, _ = lyap_exp(f, Df, trajectory, t, stepper="rk4", qr_method="gs")
-    expected = torch.sort(torch.tensor(eigs, dtype=torch.float64), descending=True).values
+    expected = torch.sort(
+        torch.tensor(eigs, dtype=torch.float64), descending=True
+    ).values
     assert torch.allclose(torch.sort(LE, descending=True).values, expected, atol=2e-2)
 
 
@@ -87,7 +92,9 @@ def test_torch_lyap_analysis_ginelli_upwind():
     assert LE_hist.shape == (t.numel(), n)
     assert BLV_hist.shape == (t.numel(), n, n)
     assert CLV_hist.shape == (t.numel(), n, n)
-    expected = torch.sort(torch.tensor(eigs, dtype=torch.float64), descending=True).values
+    expected = torch.sort(
+        torch.tensor(eigs, dtype=torch.float64), descending=True
+    ).values
     assert torch.allclose(torch.sort(LE, descending=True).values, expected, atol=2e-2)
 
 
@@ -113,4 +120,6 @@ def test_torch_clvs_equal_eigenvectors_for_diagonal_system():
         ev = Id[:, k]
         # Dot products over time
         dots = torch.einsum("ti, i -> t", CLV_hist[:, :, k], ev)
-        assert torch.allclose(torch.abs(dots), torch.ones_like(dots), atol=1e-6, rtol=0.0)
+        assert torch.allclose(
+            torch.abs(dots), torch.ones_like(dots), atol=1e-6, rtol=0.0
+        )

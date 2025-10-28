@@ -261,9 +261,7 @@ def run_variational_integrator(
         return _lyap_int_k_step(
             f, Df, trajectory, t, k_step, stepper, *args, qr_solver=qr_solver
         )
-    return _lyap_int(
-        f, Df, trajectory, t, stepper, *args, qr_solver=qr_solver
-    )
+    return _lyap_int(f, Df, trajectory, t, stepper, *args, qr_solver=qr_solver)
 
 
 def run_state_variational_integrator(
@@ -287,9 +285,7 @@ def run_state_variational_integrator(
         return _lyap_int_k_step_from_x0(
             f, Df, x0, t, k_step, stepper, *args, qr_solver=qr_solver
         )
-    return _lyap_int_from_x0(
-        f, Df, x0, t, stepper, *args, qr_solver=qr_solver
-    )
+    return _lyap_int_from_x0(f, Df, x0, t, stepper, *args, qr_solver=qr_solver)
 
 
 __all__ = [

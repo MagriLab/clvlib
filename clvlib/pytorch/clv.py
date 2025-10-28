@@ -2,6 +2,7 @@ import torch
 
 Tensor = torch.Tensor
 
+
 def _ginelli(Q: Tensor, R: Tensor) -> Tensor:
     """Ginelli algorithm."""
     n_time, n_dim, n_lyap = Q.shape
@@ -26,7 +27,7 @@ def _upwind_ginelli(Q: Tensor, R: Tensor) -> Tensor:
     V[-1] = Q[-1] @ C
 
     for i in reversed(range(n_time - 1)):
-        C = torch.linalg.solve_triangular(R[i+1], C, upper=True)
+        C = torch.linalg.solve_triangular(R[i + 1], C, upper=True)
         C /= torch.norm(C, dim=0, keepdim=True)
         V[i] = Q[i] @ C
     return V

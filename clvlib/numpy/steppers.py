@@ -12,8 +12,7 @@ class VariationalStepper(Protocol):
         V: np.ndarray,
         dt: float,
         *args,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        ...
+    ) -> Tuple[np.ndarray, np.ndarray]: ...
 
 
 def _var_euler_step(
@@ -100,7 +99,9 @@ _STEPPERS: Dict[str, VariationalStepper] = {
 }
 
 
-def resolve_stepper(stepper: Union[str, VariationalStepper, None]) -> VariationalStepper:
+def resolve_stepper(
+    stepper: Union[str, VariationalStepper, None],
+) -> VariationalStepper:
     """Resolve a stepper identifier or callable to a concrete stepper.
 
     - None or 'rk4' -> fourth-order Runge–Kutta variational stepper
@@ -140,4 +141,3 @@ __all__ = [
     "_var_rk4_step",
     "_discrete_var_step",
 ]
-

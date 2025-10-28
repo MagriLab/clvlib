@@ -27,7 +27,9 @@ def compute_ICLE(
     n_time, n_state = trajectory.shape
     n_samples, n_clv_state, m = CLV_history.shape
     if n_state != n_clv_state:
-        raise ValueError("trajectory and CLV_history must share the same state dimension.")
+        raise ValueError(
+            "trajectory and CLV_history must share the same state dimension."
+        )
     if n_time != time.shape[0]:
         raise ValueError("trajectory  and time must share the same number of samples.")
     if n_samples == 0:

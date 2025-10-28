@@ -23,8 +23,8 @@ def principal_angles(V1: Tensor, V2: Tensor) -> Tensor:
     dim = min(m1, m2)
     theta = torch.empty((nt, dim), dtype=V1.dtype, device=V1.device)
     for i in range(nt):
-        Q1, _ = torch.linalg.qr(V1[i], mode='reduced')
-        Q2, _ = torch.linalg.qr(V2[i], mode='reduced')
+        Q1, _ = torch.linalg.qr(V1[i], mode="reduced")
+        Q2, _ = torch.linalg.qr(V2[i], mode="reduced")
         singular_values = torch.linalg.svdvals(Q1.transpose(-2, -1) @ Q2)
         singular_values = torch.clamp(singular_values, -1.0, 1.0)
         theta[i] = torch.arccos(singular_values[:dim])

@@ -25,7 +25,9 @@ def compute_ICLE(
     n_time, n_state = trajectory.shape
     n_samples, n_clv_state, m = CLV_history.shape
     if n_state != n_clv_state:
-        raise ValueError("trajectory and CLV_history must share the same state dimension.")
+        raise ValueError(
+            "trajectory and CLV_history must share the same state dimension."
+        )
     if n_time != time.size:
         raise ValueError("trajectory and time must share the same number of samples.")
     if n_samples == 0:
@@ -56,7 +58,7 @@ def _compute_icle_series(
         jacobian_function, sampled_states, sampled_times, *args
     )
     # Time-first einsum: CLV_history (t,i,k), J_history (t,i,j)
-    ICLE = np.einsum('tik,tij,tjk->tk', CLV_history, J_history, CLV_history)
+    ICLE = np.einsum("tik,tij,tjk->tk", CLV_history, J_history, CLV_history)
     return ICLE
 
 

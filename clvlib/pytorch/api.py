@@ -92,15 +92,17 @@ def lyap_analysis_from_ic(
     _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
 
     step = resolve_stepper(stepper)
-    LE, LE_history, BLV_history, R_history, trajectory = run_state_variational_integrator(
-        f,
-        Df,
-        x0,
-        t,
-        *args,
-        k_step=k_step,
-        stepper=step,
-        qr_method=qr_method,
+    LE, LE_history, BLV_history, R_history, trajectory = (
+        run_state_variational_integrator(
+            f,
+            Df,
+            x0,
+            t,
+            *args,
+            k_step=k_step,
+            stepper=step,
+            qr_method=qr_method,
+        )
     )
     CLV_history = _clvs(BLV_history, R_history, ginelli_method=ginelli_method)
     return LE, LE_history, BLV_history, CLV_history, trajectory
@@ -124,15 +126,17 @@ def lyap_exp_from_ic(
     _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
 
     step = resolve_stepper(stepper)
-    LE, LE_history, BLV_history, _R_history, trajectory = run_state_variational_integrator(
-        f,
-        Df,
-        x0,
-        t,
-        *args,
-        k_step=k_step,
-        stepper=step,
-        qr_method=qr_method,
+    LE, LE_history, BLV_history, _R_history, trajectory = (
+        run_state_variational_integrator(
+            f,
+            Df,
+            x0,
+            t,
+            *args,
+            k_step=k_step,
+            stepper=step,
+            qr_method=qr_method,
+        )
     )
     if return_blv:
         return LE, LE_history, BLV_history, trajectory

@@ -1,5 +1,6 @@
 import pytest
 from clvlib.pytorch import compute_angles, principal_angles, compute_ICLE, lyap_analysis
+
 torch = pytest.importorskip("torch")
 
 
@@ -8,8 +9,12 @@ def test_torch_compute_angles_clamping_and_identity():
     V1 = torch.tensor([[1.0, 0.0], [0.0, 1.0]], dtype=dtype)
     V2 = (1.0 + 1e-12) * V1
     cos, theta = compute_angles(V1, V2)
-    assert torch.allclose(cos, torch.tensor([1.0, 1.0], dtype=dtype), atol=0.0, rtol=0.0)
-    assert torch.allclose(theta, torch.tensor([0.0, 0.0], dtype=dtype), atol=0.0, rtol=0.0)
+    assert torch.allclose(
+        cos, torch.tensor([1.0, 1.0], dtype=dtype), atol=0.0, rtol=0.0
+    )
+    assert torch.allclose(
+        theta, torch.tensor([0.0, 0.0], dtype=dtype), atol=0.0, rtol=0.0
+    )
 
 
 def test_torch_principal_angles_identical_subspaces():
@@ -22,7 +27,9 @@ def test_torch_principal_angles_identical_subspaces():
     V2 = Id[:, :m].unsqueeze(0).repeat(nt, 1, 1)
     angles = principal_angles(V1, V2)
     assert angles.shape == (nt, m)
-    assert torch.allclose(angles, torch.zeros((nt, m), dtype=dtype), atol=1e-12, rtol=0.0)
+    assert torch.allclose(
+        angles, torch.zeros((nt, m), dtype=dtype), atol=1e-12, rtol=0.0
+    )
 
 
 def test_torch_icle_with_known_clv_and_constant_jacobian():
@@ -96,4 +103,6 @@ def test_torch_clvs_match_eigenvectors_in_linear_diagonal_case():
     for k in range(n):
         e = Id[:, k]
         dots = torch.einsum("ti,i->t", CLV_hist[:, :, k], e)
-        assert torch.allclose(torch.abs(dots), torch.ones_like(dots), atol=1e-6, rtol=0.0)
+        assert torch.allclose(
+            torch.abs(dots), torch.ones_like(dots), atol=1e-6, rtol=0.0
+        )

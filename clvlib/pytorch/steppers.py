@@ -14,8 +14,7 @@ class VariationalStepper(Protocol):
         V: Tensor,
         dt: float,
         *args,
-    ) -> Tuple[Tensor, Tensor]:
-        ...
+    ) -> Tuple[Tensor, Tensor]: ...
 
 
 def _var_euler_step(
@@ -98,7 +97,9 @@ _STEPPERS: Dict[str, VariationalStepper] = {
 }
 
 
-def resolve_stepper(stepper: Union[str, VariationalStepper, None]) -> VariationalStepper:
+def resolve_stepper(
+    stepper: Union[str, VariationalStepper, None],
+) -> VariationalStepper:
     """Resolve a stepper identifier or callable to a concrete stepper."""
     if stepper is None:
         return _var_rk4_step
