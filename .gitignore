@@ -9,3 +9,4 @@ __pycache__/
 *.html
 benchmarks/*.npz
 *.ipynb
+!tutorials/*.ipynb
