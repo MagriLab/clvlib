@@ -71,11 +71,6 @@ angles = principal_angles(clv_history[:, :, -1:], clv_history[:, :, :-1])
 icle = compute_ICLE(jacobian, traj, times, clv_history, k_step=1)
 ```
 
-## Tutorials and examples
-- `tutorials/lorenz_numpy_quickstart.ipynb` – step-by-step walkthrough reproducing the NumPy quickstart, plotting LE convergence and CLV geometry.
-
-Consider adding additional examples (e.g., discrete-time maps, higher-dimensional models, GPU benchmarks) under `tutorials/` or `examples/`.
-
 ## License
 No explicit license is defined yet. Choose and add one (e.g., MIT, BSD-3-Clause) before distributing binaries.
 
