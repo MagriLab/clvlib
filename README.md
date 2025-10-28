@@ -1,17 +1,14 @@
 # clvlib
 
-`clvlib` provides utilities for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs). This library has implementations in both `NumPy` and `PyTorch`. The Lyapunov exponents and backward Lyapunov vectors are computed with the Benettin algorithm, and the library gives the possibility to select the QR decomposition to be used. In particular, there are two possibilities, either using Householder reflection `householder` or Grham-Schmidt decomposition `grahm-schmidt`. The former is faster, as it is called using scipy, and more stable, however it interacts weirdly with Ginelli's algorithm for computation of the CLVs, for more information check the tutorials. The latter is slower and more unstable but ineracts better with Ginelli's algorithm.
+`clvlib` is a library for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) with a single API that works across NumPy and PyTorch backends. Under the hood it implements the Benettin algorithm, giving you control over the re-orthonormalisation step through selectable QR routines: `householder` (SciPy-backed, fast, numerically robust) or `gram-schmidt` (Numba-powered and friendlier to some CLV post-processing).
 
-To overcome this incompatibility between the Househodler reflections we introduce a novel modification to Ginelli's algorithm, that we call upwind Ginelli `upwind_ginelli`,
+Householder-based updates may clash with the classical Ginelli reconstruction of CLVs, so this package also ships an alternative variant, `upwind_ginelli`, that remains stable with either QR option. Have a look at the tutorials for a deeper dive into the trade-offs.
+
+The variational stepper is intentionally modular. Standard Euler, RK2, RK4, and discrete-time steppers are bundled, but you can register your own functions for bespoke integrators, and, when working with NumPy, JIT-compile them with Numba for extra speed.
 
 ## Installation
 ```bash
 pip install clvlib
-```
-
-For development work (tests, linters, typing):
-```bash
-pip install -e .[dev]
 ```
 
 ## Quickstart
@@ -65,10 +62,10 @@ print("Asymptotic Lyapunov exponents:", LE)
 from clvlib.numpy import compute_angles, principal_angles, compute_ICLE
 
 # Pairwise vector angles
-cosine, theta = compute_angles(blv_history[-1], clv_history[-1])
+cosine, theta = compute_angles(clv_history[:, :, 0], clv_history[:, :, 1])
 
 # Principal angles between subspaces (time-first arrays)
-angles = principal_angles(blv_history[:, :, :2], clv_history[:, :, :2])
+angles = principal_angles(clv_history[:, :, -1:], clv_history[:, :, :-1])
 
 # Instantaneous covariant exponents sampled every k_step iterations
 icle = compute_ICLE(jacobian, traj, times, clv_history, k_step=1)
@@ -78,19 +75,6 @@ icle = compute_ICLE(jacobian, traj, times, clv_history, k_step=1)
 - `tutorials/lorenz_numpy_quickstart.ipynb` – step-by-step walkthrough reproducing the NumPy quickstart, plotting LE convergence and CLV geometry.
 
 Consider adding additional examples (e.g., discrete-time maps, higher-dimensional models, GPU benchmarks) under `tutorials/` or `examples/`.
-
-## Testing & linting
-```bash
-ruff check
-ruff format --check
-mypy clvlib
-pytest
-```
-
-## Contributing
-- File issues or ideas in GitHub.
-- Run the test suite (see above) before submitting a pull request.
-- Keep documentation and examples in sync across the NumPy and PyTorch APIs.
 
 ## License
 No explicit license is defined yet. Choose and add one (e.g., MIT, BSD-3-Clause) before distributing binaries.
