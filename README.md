@@ -4,7 +4,7 @@
 
 Householder-based updates may clash with the classical Ginelli reconstruction of CLVs[^ginelli], so this package also ships an alternative variant, `upwind_ginelli`, that remains stable with either QR option. Have a look at the tutorials for a deeper dive into the trade-offs.
 
-The variational stepper is intentionally modular. Standard Euler, RK2, RK4, and discrete-time steppers are bundled, but you can register your own functions for bespoke integrators, and, when working with NumPy, JIT-compile them with Numba for extra speed.
+The variational stepper is modular. Standard Euler, RK2, RK4, and discrete-time steppers are bundled, but you can register your own functions for bespoke integrators, and, when working with NumPy, JIT-compile them with Numba for extra speed.
 
 ## Installation
 ```bash
