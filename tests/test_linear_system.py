@@ -104,10 +104,10 @@ def test_clvs_equal_eigenvectors_for_diagonal_system():
     )
 
     # Canonical eigenvectors for diagonal A
-    I = np.eye(n, dtype=float)
+    Id = np.eye(n, dtype=float)
     # Check each CLV column aligns with the corresponding eigenvector across time (up to sign)
     for k in range(n):
-        ev = I[:, k]
+        ev = Id[:, k]
         # Dot products over time
         dots = np.einsum("ti, i -> t", CLV_hist[:, :, k], ev)
         assert np.allclose(np.abs(dots), 1.0, atol=1e-6)

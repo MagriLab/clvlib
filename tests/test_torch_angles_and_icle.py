@@ -1,7 +1,6 @@
 import pytest
-torch = pytest.importorskip("torch")
-
 from clvlib.pytorch import compute_angles, principal_angles, compute_ICLE, lyap_analysis
+torch = pytest.importorskip("torch")
 
 
 def test_torch_compute_angles_clamping_and_identity():

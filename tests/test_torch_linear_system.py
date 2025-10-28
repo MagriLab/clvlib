@@ -1,7 +1,8 @@
 import pytest
+from clvlib.pytorch import lyap_exp, lyap_analysis
 torch = pytest.importorskip("torch")
 
-from clvlib.pytorch import lyap_exp, lyap_analysis
+
 
 
 def _make_linear_system(eigs):
@@ -106,10 +107,10 @@ def test_torch_clvs_equal_eigenvectors_for_diagonal_system():
     )
 
     # Canonical eigenvectors for diagonal A
-    I = torch.eye(n, dtype=torch.float64)
+    Id = torch.eye(n, dtype=torch.float64)
     # Check each CLV column aligns with the corresponding eigenvector across time (up to sign)
     for k in range(n):
-        ev = I[:, k]
+        ev = Id[:, k]
         # Dot products over time
         dots = torch.einsum("ti, i -> t", CLV_hist[:, :, k], ev)
         assert torch.allclose(torch.abs(dots), torch.ones_like(dots), atol=1e-6, rtol=0.0)
