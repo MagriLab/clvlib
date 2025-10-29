@@ -76,7 +76,7 @@ icle = compute_ICLE(jacobian, traj, times, clv_history, k_step=1)
 If `clvlib` contributes to your published work, please cite it as:
 
 ```
-@misc{consonni_clvlib_2024,
+@misc{consonni_clvlib_2025,
   author    = {Riccardo Consonni},
   title     = {clvlib},
   year      = {2025},
