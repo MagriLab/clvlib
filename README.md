@@ -79,7 +79,7 @@ If `clvlib` contributes to your published work, please cite it as:
   author    = {Riccardo Consonni},
   title     = {clvlib},
   year      = {2025},
-  url       = {https://github.com/rickthecatto/clvlib},
+  url       = {https://github.com/riccardo-consonni/clvlib},
 }
 ```
 
