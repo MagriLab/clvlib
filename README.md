@@ -85,7 +85,7 @@ If `clvlib` contributes to your published work, please cite it as:
 ```
 
 ## License
-No explicit license is defined yet. Choose and add one (e.g., MIT, BSD-3-Clause) before distributing binaries.
+Published under the MIT License. See `LICENSE` for the full text.
 
 [^1]: Benettin, G., Galgani, L., Giorgilli, A., & Strelcyn, J.-M. (1980). Lyapunov characteristic exponents for smooth dynamical systems and for Hamiltonian systems; a method for computing all of them. Part 1: Theory. Meccanica, 15(1), 9–20.
 
