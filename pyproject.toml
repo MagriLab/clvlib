@@ -20,6 +20,9 @@ readme = { text = "Utilities to compute Lyapunov exponents and Covariant Lyapuno
 authors = [
   {name = "Riccardo Consonni"}
 ]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -27,6 +30,11 @@ dev = [
   "ruff>=0.5",
   "mypy>=1.10",
 ]
+
+[project.urls]
+Homepage = "https://github.com/riccardo-consonni/clvlib"
+Repository = "https://github.com/riccardo-consonni/clvlib"
+Issues = "https://github.com/riccardo-consonni/clvlib/issues"
 
 [tool.setuptools]
 
