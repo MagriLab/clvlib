@@ -58,6 +58,9 @@ LE, LE_history, blv_history, clv_history, traj = lyap_analysis_from_ic(
 print("Asymptotic Lyapunov exponents:", LE)
 ```
 
+See `tutorials/lorenz_numpy_quickstart.ipynb` for the NumPy walkthrough, and `tutorials/lorenz_pytorch_quickstart.ipynb` for the PyTorch version.
+
+
 ## Angles and instantaneous CLVs
 ```python
 from clvlib.numpy import compute_angles, principal_angles, compute_ICLE
