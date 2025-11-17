@@ -88,6 +88,37 @@ def test_lyap_analysis_ginelli_upwind():
     assert np.allclose(np.sort(LE)[::-1], expected, atol=2e-2)
 
 
+def test_partial_lyap_vectors_and_shapes():
+    eigs = [0.35, 0.05, -0.12]
+    A, f, Df = _make_linear_system(eigs)
+
+    T = 2.5
+    steps = 1000
+    t = np.linspace(0.0, T, steps + 1)
+    n = len(eigs)
+    trajectory = np.zeros((t.size, n), dtype=float)
+
+    k_step = 5
+    n_lyap = 2
+    LE, LE_hist, BLV_hist, CLV_hist = lyap_analysis(
+        f,
+        Df,
+        trajectory,
+        t,
+        stepper="rk4",
+        k_step=k_step,
+        n_lyap=n_lyap,
+    )
+    n_step = ((t.size - 1) // k_step) + 1
+    expected = np.sort(np.array(eigs))[::-1][:n_lyap]
+
+    assert LE.shape == (n_lyap,)
+    assert LE_hist.shape == (n_step, n_lyap)
+    assert BLV_hist.shape == (n_step, n, n_lyap)
+    assert CLV_hist.shape == (n_step, n, n_lyap)
+    assert np.allclose(np.sort(LE)[::-1], expected, atol=2e-2)
+
+
 def test_clvs_equal_eigenvectors_for_diagonal_system():
     # Use diagonal A with descending eigenvalues so column order matches
     eigs = [0.4, 0.1, -0.2]

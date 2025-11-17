@@ -14,15 +14,18 @@ def lyap_analysis(
     *args,
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
+    n_lyap: Union[int, None] = None,
     qr_method: str = "householder",
     ginelli_method: str = "ginelli",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Run Lyapunov-exponent integration and compute the associated CLVs.
     Set `k_step` > 1 to use the k-step variational integrator.
+    Use `n_lyap` to restrict the number of Lyapunov exponents/vectors.
     Returns (LE, LE_history, BLV_history, CLV_history).
     """
     n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
+    n_vec = _resolve_n_lyap(n_lyap, n)
 
     step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, CLV_history = _compute_lyap_outputs(
@@ -33,15 +36,16 @@ def lyap_analysis(
         *args,
         k_step=k_step,
         stepper=step,
+        n_lyap=n_vec,
         qr_method=qr_method,
         ginelli_method=ginelli_method,
     )
 
     expected_time_samples = BLV_history.shape[0]
-    if CLV_history.shape != (expected_time_samples, n, n):
+    if CLV_history.shape != (expected_time_samples, n, n_vec):
         raise RuntimeError(
             "CLV history has inconsistent shape: "
-            f"expected {(expected_time_samples, n, n)}, got {CLV_history.shape}."
+            f"expected {(expected_time_samples, n, n_vec)}, got {CLV_history.shape}."
         )
 
     return LE, LE_history, BLV_history, CLV_history
@@ -56,13 +60,15 @@ def lyap_exp(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     return_blv: bool = False,
+    n_lyap: Union[int, None] = None,
     qr_method: str = "householder",
 ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """
     Run Lyapunov-exponent integration without computing CLVs.
     Returns (LE, LE_history[, BLV_history]).
     """
-    _validate_lyap_inputs(f, Df, trajectory, t, k_step)
+    n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
+    n_vec = _resolve_n_lyap(n_lyap, n)
 
     step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, _ = run_variational_integrator(
@@ -73,6 +79,7 @@ def lyap_exp(
         *args,
         k_step=k_step,
         stepper=step,
+        n_lyap=n_vec,
         qr_method=qr_method,
     )
 
@@ -90,6 +97,7 @@ def lyap_analysis_from_ic(
     *args,
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
+    n_lyap: Union[int, None] = None,
     qr_method: str = "householder",
     ginelli_method: str = "ginelli",
 ) -> Union[
@@ -100,7 +108,9 @@ def lyap_analysis_from_ic(
     Run Lyapunov-exponent integration and compute CLVs starting from an initial condition.
     Returns (LE, LE_history, BLV_history, CLV_history, trajectory).
     """
+    n = x0.size
     _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
+    n_vec = _resolve_n_lyap(n_lyap, n)
 
     step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, R_history, trajectory = (
@@ -112,6 +122,7 @@ def lyap_analysis_from_ic(
             *args,
             k_step=k_step,
             stepper=step,
+            n_lyap=n_vec,
             qr_method=qr_method,
         )
     )
@@ -129,6 +140,7 @@ def lyap_exp_from_ic(
     k_step: int = 1,
     stepper: Union[str, VariationalStepper, None] = "rk4",
     return_blv: bool = False,
+    n_lyap: Union[int, None] = None,
     qr_method: str = "householder",
 ) -> Union[
     Tuple[np.ndarray, np.ndarray],
@@ -140,6 +152,7 @@ def lyap_exp_from_ic(
     Returns (LE, LE_history[, BLV_history], trajectory).
     """
     _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
+    n_vec = _resolve_n_lyap(n_lyap, x0.size)
 
     step = resolve_stepper(stepper)
     LE, LE_history, BLV_history, _R, trajectory = run_state_variational_integrator(
@@ -150,6 +163,7 @@ def lyap_exp_from_ic(
         *args,
         k_step=k_step,
         stepper=step,
+        n_lyap=n_vec,
         qr_method=qr_method,
     )
     if return_blv:
@@ -235,6 +249,7 @@ def _compute_lyap_outputs(
     *args,
     k_step: int = 1,
     stepper: VariationalStepper,
+    n_lyap: Union[int, None] = None,
     qr_method: str = "householder",
     ginelli_method: str = "ginelli",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -246,10 +261,23 @@ def _compute_lyap_outputs(
         *args,
         k_step=k_step,
         stepper=stepper,
+        n_lyap=n_lyap,
         qr_method=qr_method,
     )
     CLV_history = _clvs(Q_history, R_history, ginelli_method=ginelli_method)
     return LE, LE_history, Q_history, CLV_history
+
+
+def _resolve_n_lyap(n_lyap: Union[int, None], n: int) -> int:
+    if n_lyap is None:
+        return n
+    if not isinstance(n_lyap, int):
+        raise TypeError("n_lyap must be an integer or None.")
+    if n_lyap < 1:
+        raise ValueError("n_lyap must be at least 1.")
+    if n_lyap > n:
+        raise ValueError(f"n_lyap ({n_lyap}) cannot exceed system dimension ({n}).")
+    return n_lyap
 
 
 __all__ = [

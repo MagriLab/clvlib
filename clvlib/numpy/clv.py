@@ -52,7 +52,7 @@ def _clvs(
 
     try:
         solver = _GINELLI_METHODS[ginelli_method.lower()]
-    except KeyError as exc:  # pragma: no cover - defensive path
+    except KeyError as exc:  
         available = ", ".join(sorted(_GINELLI_METHODS))
         raise ValueError(
             f"Unknown ginelli_method '{ginelli_method}'. Available: {available}."

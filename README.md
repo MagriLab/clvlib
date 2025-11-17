@@ -60,6 +60,8 @@ print("Asymptotic Lyapunov exponents:", LE)
 
 See `tutorials/lorenz_numpy_quickstart.ipynb` for the NumPy walkthrough, and `tutorials/lorenz_pytorch_quickstart.ipynb` for the PyTorch version.
 
+Want only the most unstable directions? Pass `n_lyap=k` to any of the Lyapunov helpers (`lyap_exp`, `lyap_analysis`, and their `_from_ic` counterparts) to compute just the leading `k` exponents/BLVs/CLVs.
+
 
 ## Angles and instantaneous CLVs
 ```python
