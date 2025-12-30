@@ -20,6 +20,12 @@ def lyap_analysis(
     qr_method: str = "householder",
     ginelli_method: str = "ginelli",
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    """
+    Run Lyapunov-exponent integration and compute the associated CLVs.
+    Set `k_step` > 1 to use the k-step variational integrator.
+    Use `n_lyap` to restrict the number of Lyapunov exponents/vectors.
+    Returns (LE, LE_history, BLV_history, CLV_history).
+    """
     n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
     n_vec = _resolve_n_lyap(n_lyap, n)
 
@@ -59,6 +65,10 @@ def lyap_exp(
     n_lyap: Union[int, None] = None,
     qr_method: str = "householder",
 ) -> Union[Tuple[Tensor, Tensor], Tuple[Tensor, Tensor, Tensor]]:
+    """
+    Run Lyapunov-exponent integration without computing CLVs.
+    Returns (LE, LE_history[, BLV_history]).
+    """
     n, _ = _validate_lyap_inputs(f, Df, trajectory, t, k_step)
     n_vec = _resolve_n_lyap(n_lyap, n)
 
@@ -96,6 +106,10 @@ def lyap_analysis_from_ic(
     Tuple[Tensor, Tensor, Tensor, Tensor],
     Tuple[Tensor, Tensor, Tensor, Tensor, Tensor],
 ]:
+    """
+    Run Lyapunov-exponent integration and compute CLVs starting from an initial condition.
+    Returns (LE, LE_history, BLV_history, CLV_history, trajectory).
+    """
     _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
     n_vec = _resolve_n_lyap(n_lyap, x0.numel())
 
@@ -133,6 +147,10 @@ def lyap_exp_from_ic(
     Tuple[Tensor, Tensor, Tensor],
     Tuple[Tensor, Tensor, Tensor, Tensor],
 ]:
+    """
+    Run Lyapunov-exponent integration from an initial condition.
+    Returns (LE, LE_history[, BLV_history], trajectory).
+    """
     _validate_lyap_ic_inputs(f, Df, x0, t, k_step)
     n_vec = _resolve_n_lyap(n_lyap, x0.numel())
 

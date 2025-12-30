@@ -279,6 +279,10 @@ def run_variational_integrator(
     n_lyap: Union[int, None] = None,
     qr_method: Union[str, QRSolver] = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Integrate variational equations along a provided trajectory.
+
+    Returns (LE_final, LE_history, Q_history, R_history).
+    """
     qr_solver = _resolve_qr_method(qr_method)
     if k_step > 1:
         return _lyap_int_k_step(
