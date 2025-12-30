@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.linalg
+from tqdm.auto import tqdm
 
 
 def _ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
@@ -11,7 +12,7 @@ def _ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     C = np.eye(n_lyap, dtype=Q.dtype)
     V[-1] = Q[-1] @ C
 
-    for i in reversed(range(n_time - 1)):
+    for i in tqdm(range(n_time - 2, -1, -1), leave=False):
         C = scipy.linalg.solve_triangular(
             R[i], C, lower=False, overwrite_b=True, check_finite=False
         )
@@ -29,7 +30,7 @@ def _upwind_ginelli(Q: np.ndarray, R: np.ndarray) -> np.ndarray:
     C = np.eye(n_lyap, dtype=Q.dtype)
     V[-1] = Q[-1] @ C
 
-    for i in reversed(range(n_time - 1)):
+    for i in tqdm(range(n_time - 2, -1, -1), leave=False):
         C = scipy.linalg.solve_triangular(
             R[i + 1], C, lower=False, overwrite_b=True, check_finite=False
         )

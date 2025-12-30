@@ -1,4 +1,5 @@
 import torch
+from tqdm.auto import tqdm
 
 Tensor = torch.Tensor
 
@@ -11,7 +12,7 @@ def _ginelli(Q: Tensor, R: Tensor) -> Tensor:
     C = torch.eye(n_lyap, dtype=Q.dtype, device=Q.device)
     V[-1] = Q[-1] @ C
 
-    for i in reversed(range(n_time - 1)):
+    for i in tqdm(range(n_time - 2, -1, -1), leave=False):
         C = torch.linalg.solve_triangular(R[i], C, upper=True)
         C /= torch.norm(C, dim=0, keepdim=True)
         V[i] = Q[i] @ C
@@ -26,7 +27,7 @@ def _upwind_ginelli(Q: Tensor, R: Tensor) -> Tensor:
     C = torch.eye(n_lyap, dtype=Q.dtype, device=Q.device)
     V[-1] = Q[-1] @ C
 
-    for i in reversed(range(n_time - 1)):
+    for i in tqdm(range(n_time - 2, -1, -1), leave=False):
         C = torch.linalg.solve_triangular(R[i + 1], C, upper=True)
         C /= torch.norm(C, dim=0, keepdim=True)
         V[i] = Q[i] @ C

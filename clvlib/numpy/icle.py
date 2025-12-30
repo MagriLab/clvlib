@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Callable
+from tqdm.auto import tqdm
 
 
 def compute_ICLE(
@@ -70,7 +71,7 @@ def _compute_jacobian_time_history(
 ) -> np.ndarray:
     n_samples, n_state = sampled_states.shape
     J_history = np.empty((n_samples, n_state, n_state), dtype=float)
-    for idx in range(n_samples):
+    for idx in tqdm(range(n_samples), leave=False):
         J_history[idx] = jacobian_function(
             sampled_times[idx], sampled_states[idx], *args
         )

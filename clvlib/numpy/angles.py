@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.linalg
 from typing import Tuple
+from tqdm.auto import tqdm
 
 
 def compute_angles(v1: np.ndarray, v2: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -24,7 +25,7 @@ def principal_angles(v1: np.ndarray, v2: np.ndarray) -> np.ndarray:
     nt, _, m1 = v1.shape
     _, _, m2 = v2.shape
     theta = np.empty((nt, min(m1, m2)), dtype=float)
-    for i in range(nt):
+    for i in tqdm(range(nt), leave=False):
         theta[i] = np.squeeze(scipy.linalg.subspace_angles(v1[i], v2[i]))
     return theta
 

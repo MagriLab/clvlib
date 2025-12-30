@@ -1,5 +1,6 @@
 import torch
 from typing import Callable
+from tqdm.auto import tqdm
 
 Tensor = torch.Tensor
 
@@ -77,7 +78,7 @@ def _compute_jacobian_time_history(
         dtype=sampled_states.dtype,
         device=sampled_states.device,
     )
-    for idx in range(n_samples):
+    for idx in tqdm(range(n_samples), leave=False):
         J_history[idx] = jacobian_function(
             sampled_times[idx], sampled_states[idx], *args
         )

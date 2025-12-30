@@ -2,3 +2,4 @@ numpy>=1.22
 scipy>=1.8
 numba>=0.56
 torch>=1.12
+tqdm>=4.66

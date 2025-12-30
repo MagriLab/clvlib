@@ -1,4 +1,5 @@
 import torch
+from tqdm.auto import tqdm
 from typing import Callable, Tuple, Union
 
 from .steppers import VariationalStepper
@@ -103,7 +104,7 @@ def _lyap_int(
     LE_history[0] = torch.zeros(m, dtype=dtype, device=device)
     log_sums = torch.zeros(m, dtype=dtype, device=device)
 
-    for i in range(nt - 1):
+    for i in tqdm(range(nt - 1), leave=False):
         _, Q = stepper(f, Df, float(t[i].item()), trajectory[i], Q, dt, *args)
         Q, R = qr_solver(Q)
         Q_history[i + 1] = Q
@@ -145,7 +146,7 @@ def _lyap_int_k_step(
     LE_history[0] = torch.zeros(m, dtype=dtype, device=device)
 
     j = 0
-    for i in range(nt - 1):
+    for i in tqdm(range(nt - 1), leave=False):
         _, Q = stepper(f, Df, float(t[i].item()), trajectory[i], Q, dt, *args)
         if (i + 1) % k_step == 0:
             Q, R = qr_solver(Q)
@@ -190,7 +191,7 @@ def _lyap_int_from_x0(
     LE_history[0] = torch.zeros(m, dtype=dtype, device=device)
     log_sums = torch.zeros(m, dtype=dtype, device=device)
 
-    for i in range(nt - 1):
+    for i in tqdm(range(nt - 1), leave=False):
         x, Q = stepper(f, Df, float(t[i].item()), x, Q, dt, *args)
         trajectory[i + 1] = x
         Q, R = qr_solver(Q)
@@ -237,7 +238,7 @@ def _lyap_int_k_step_from_x0(
     LE_history[0] = torch.zeros(m, dtype=dtype, device=device)
 
     j = 0
-    for i in range(nt - 1):
+    for i in tqdm(range(nt - 1), leave=False):
         x, Q = stepper(f, Df, float(t[i].item()), x, Q, dt, *args)
         trajectory[i + 1] = x
         if (i + 1) % k_step == 0:
