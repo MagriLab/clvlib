@@ -70,7 +70,7 @@ from clvlib.numpy import compute_angles, principal_angles, compute_ICLE
 # Pairwise vector angles
 cosine, theta = compute_angles(clv_history[:, :, 0], clv_history[:, :, 1])
 
-# Principal angles between subspaces (time-first arrays)
+# Principal angles between subspaces
 angles = principal_angles(clv_history[:, :, -1:], clv_history[:, :, :-1])
 
 # Instantaneous covariant exponents sampled every k_step iterations
