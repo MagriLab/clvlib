@@ -10,6 +10,7 @@ name = "clvlib"
 version = "0.1.0"
 description = "Lyapunov exponents and Covariant Lyapunov Vectors utilities"
 requires-python = ">=3.9"
+license = { file = "LICENSE" }
 dependencies = [
   "numpy>=1.22",
   "scipy>=1.8",
