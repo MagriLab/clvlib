@@ -17,7 +17,7 @@ dependencies = [
   "torch>=1.12",
   "tqdm>=4.66",
 ]
-readme = { text = "Utilities to compute Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) Gram–Schmidt and Househodler re-orthonormalization, and Ginelli’s algorithm.", "content-type" = "text/plain" }
+readme = "README.md"
 authors = [
   {name = "Riccardo Consonni"}
 ]
