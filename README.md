@@ -7,7 +7,6 @@ Householder-based updates may clash with the classical Ginelli reconstruction of
 The variational stepper is modular. Standard Euler, RK2, RK4, and discrete-time steppers are bundled, but you can register your own functions for the integrators, and, when working with NumPy, JIT-compile them with Numba for extra speed.
 
 ## Installation
-> **Warning**: The package is not yet published on PyPI. Install from source for now; a PyPI release will follow.
 ```bash
 pip install clvlib
 ```
