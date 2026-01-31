@@ -1,10 +1,10 @@
 # clvlib
 
-`clvlib` is a library for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) with NumPy and PyTorch backends. Under the hood it implements the Benettin algorithm[^1], giving you control over the re-orthonormalisation step through selectable QR routines: `householder` (SciPy-backed, fast, numerically robust) or `gram-schmidt` (Numba-powered).
+`clvlib` is a library for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) with NumPy and PyTorch. Lyapunov exponents are computed using Benettin's algorithm[^1]. This library gives you control over the re-orthonormalisation step through selectable QR routines: `householder` (SciPy, fast and numerically robust) or `gram-schmidt` (accelerated using Numba). The CLVs are computed using Ginelli's algorithm[^2]
 
-Householder-based updates may clash with the classical Ginelli reconstruction of CLVs[^2], so this package introduces an alternative variant, `upwind_ginelli`, that remains stable with either QR option. Have a look at the tutorials for a deeper dive into the trade-offs.
+Householder-based updates may clash with the classical Ginelli reconstruction of CLVs[^2], so this package introduces an alternative variant, `upwind_ginelli`, that remains stable with either QR option. Have a look at the tutorials for a deeper dive.
 
-The variational stepper is modular. Standard Euler, RK2, RK4, and discrete-time steppers are bundled, but you can register your own functions for the integrators, and, when working with NumPy, JIT-compile them with Numba for extra speed.
+The variational stepper used to integrate the variational system is modular. Standard Euler, RK2, RK4, and discrete-time steppers are bundled, but you can register your own functions for the integrators.
 
 ## Installation
 ```bash
@@ -91,6 +91,7 @@ If `clvlib` contributes to your published work, please cite it as:
 ## License
 Published under the MIT License. See `LICENSE` for the full text.
 
+## References
 [^1]: Benettin, G., Galgani, L., Giorgilli, A., & Strelcyn, J.-M. (1980). Lyapunov characteristic exponents for smooth dynamical systems and for Hamiltonian systems; a method for computing all of them. Part 1: Theory. Meccanica, 15(1), 9–20.
 
 [^2]: Ginelli, F., Poggi, P., Turchi, A., Chaté, H., Livi, R., & Politi, A. (2007). Characterizing dynamics with covariant Lyapunov vectors. Physical Review Letters, 99(13), 130601.
