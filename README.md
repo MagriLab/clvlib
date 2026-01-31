@@ -1,6 +1,6 @@
 # clvlib
 
-`clvlib` is a library for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) with NumPy and PyTorch. Lyapunov exponents are computed using Benettin's algorithm [[1]](#R1). This library gives you control over the re-orthonormalisation step through selectable QR routines: `householder` (SciPy, fast and numerically robust) or `gram-schmidt` (accelerated using Numba). The CLVs are computed using Ginelli's algorithm [[2]](#R2)
+`clvlib` is a library for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) with NumPy and PyTorch. Lyapunov exponents are computed using Benettin's algorithm [[1]](#R1). This library gives you control over the re-orthonormalisation step through selectable QR routines: `householder` (SciPy, fast and numerically robust) or `gram-schmidt` (accelerated using Numba). The CLVs are computed using Ginelli's algorithm [[2]](#R2).
 
 Householder-based updates may clash with the classical Ginelli reconstruction of CLVs [[2]](#R2), so this package introduces an alternative variant, `upwind_ginelli`, that remains stable with either QR option. Have a look at the tutorials for a deeper dive.
 
