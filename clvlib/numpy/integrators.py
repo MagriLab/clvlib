@@ -1,84 +1,21 @@
 import numpy as np
 from typing import Callable, Tuple, Union
 import scipy.linalg
-from numba import njit
 from tqdm.auto import tqdm
 from .steppers import VariationalStepper
 
 
-QRSolver = Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]]
-
-
-@njit
-def gram_schmidt_qr(A: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    m, n = A.shape
-    Q = np.zeros((m, n), dtype=np.float64)
-    R = np.zeros((n, n), dtype=np.float64)
-
-    for j in range(n):
-        # v = A[:, j].copy()
-        v = np.empty(m, dtype=np.float64)
-        for r in range(m):
-            v[r] = A[r, j]
-
-        for i in range(j):
-            # R[i, j] = dot(Q[:, i], A[:, j])
-            s = 0.0
-            for k in range(m):
-                s += Q[k, i] * A[k, j]
-            R[i, j] = s
-
-            # v -= R[i, j] * Q[:, i]
-            c = R[i, j]
-            for k in range(m):
-                v[k] -= c * Q[k, i]
-
-        # R[j, j] = norm(v)
-        s2 = 0.0
-        for k in range(m):
-            s2 += v[k] * v[k]
-        Rjj = np.sqrt(s2)
-        R[j, j] = Rjj
-
-        # Q[:, j] = v / R[j, j]
-        inv = 1.0 / Rjj
-        for k in range(m):
-            Q[k, j] = v[k] * inv
-
-    return Q, R
-
-
-def _qr_householder(Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def _qr(Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     # Economic mode keeps the number of columns equal to the input, which is
     # required when computing only a subset of Lyapunov vectors.
-    return scipy.linalg.qr(
+    Q, R = scipy.linalg.qr(
         Q, overwrite_a=True, mode="economic", check_finite=False
     )
-
-
-def _qr_numba(Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    return gram_schmidt_qr(np.ascontiguousarray(Q, dtype=np.float64))
-
-
-_QR_METHODS = {
-    "householder": _qr_householder,
-    "gs": _qr_numba,
-    "gram-schmidt": _qr_numba,
-    "gram_schmidt": _qr_numba,
-}
-
-
-def _resolve_qr_method(qr_method: Union[str, QRSolver]) -> QRSolver:
-    if callable(qr_method):
-        return qr_method
-    method_key = qr_method.lower()
-    try:
-        return _QR_METHODS[method_key]
-    except KeyError as exc:
-        available = ", ".join(sorted(_QR_METHODS))
-        raise ValueError(
-            f"Unknown qr_method '{qr_method}'. Available: {available}."
-        ) from exc
+    s = np.sign(np.diag(R))
+    s[s == 0.0] = 1.0
+    Q = Q * s[np.newaxis, :]
+    R = s[:, np.newaxis] * R
+    return Q, R
 
 
 def _resolve_n_lyap(n_lyap: Union[int, None], n: int) -> int:
@@ -101,7 +38,6 @@ def _lyap_int(
     stepper: VariationalStepper,
     *args,
     n_lyap: Union[int, None],
-    qr_solver: QRSolver,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dt = t[1] - t[0]
     nt = t.size
@@ -121,7 +57,7 @@ def _lyap_int(
 
     for i in tqdm(range(nt - 1), leave=False):
         _, Q = stepper(f, Df, t[i], trajectory[i], Q, dt, *args)
-        Q, R = qr_solver(Q)
+        Q, R = _qr(Q)
         Q_history[i + 1] = Q
         R_history[i + 1] = R
         log_sums += np.log(np.abs(np.diag(R)))
@@ -139,7 +75,6 @@ def _lyap_int_k_step(
     stepper: VariationalStepper,
     *args,
     n_lyap: Union[int, None],
-    qr_solver: QRSolver,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     dt = t[1] - t[0]
     nt = t.size
@@ -162,7 +97,7 @@ def _lyap_int_k_step(
     for i in tqdm(range(nt - 1), leave=False):
         _, Q = stepper(f, Df, t[i], trajectory[i], Q, dt, *args)
         if (i + 1) % k_step == 0:
-            Q, R = qr_solver(Q)
+            Q, R = _qr(Q)
             Q_history[j + 1] = Q
             R_history[j + 1] = R
             log_sums += np.log(np.abs(np.diag(R)))
@@ -180,7 +115,6 @@ def _lyap_int_from_x0(
     stepper: VariationalStepper,
     *args,
     n_lyap: Union[int, None],
-    qr_solver: QRSolver,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Integrate state and variational system from an initial condition.
 
@@ -209,7 +143,7 @@ def _lyap_int_from_x0(
     for i in tqdm(range(nt - 1), leave=False):
         x, Q = stepper(f, Df, t[i], x, Q_history[i], dt, *args)
         trajectory[i + 1] = x
-        Q, R = qr_solver(Q)
+        Q, R = _qr(Q)
         Q_history[i + 1] = Q
         R_history[i + 1] = R
         log_sums += np.log(np.abs(np.diag(R)))
@@ -227,7 +161,6 @@ def _lyap_int_k_step_from_x0(
     stepper: VariationalStepper,
     *args,
     n_lyap: Union[int, None],
-    qr_solver: QRSolver,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """k-step integration from an initial condition.
 
@@ -259,7 +192,7 @@ def _lyap_int_k_step_from_x0(
         x, Q = stepper(f, Df, t[i], x, Q_history[i], dt, *args)
         trajectory[i + 1] = x
         if (i + 1) % k_step == 0:
-            Q, R = qr_solver(Q)
+            Q, R = _qr(Q)
             Q_history[j + 1] = Q
             R_history[j + 1] = R
             log_sums += np.log(np.abs(np.diag(R)))
@@ -278,13 +211,11 @@ def run_variational_integrator(
     k_step: int = 1,
     stepper: VariationalStepper,
     n_lyap: Union[int, None] = None,
-    qr_method: Union[str, QRSolver] = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Integrate variational equations along a provided trajectory.
 
     Returns (LE_final, LE_history, Q_history, R_history).
     """
-    qr_solver = _resolve_qr_method(qr_method)
     if k_step > 1:
         return _lyap_int_k_step(
             f,
@@ -295,11 +226,8 @@ def run_variational_integrator(
             stepper,
             *args,
             n_lyap=n_lyap,
-            qr_solver=qr_solver,
         )
-    return _lyap_int(
-        f, Df, trajectory, t, stepper, *args, n_lyap=n_lyap, qr_solver=qr_solver
-    )
+    return _lyap_int(f, Df, trajectory, t, stepper, *args, n_lyap=n_lyap)
 
 
 def run_state_variational_integrator(
@@ -311,13 +239,11 @@ def run_state_variational_integrator(
     k_step: int = 1,
     stepper: VariationalStepper,
     n_lyap: Union[int, None] = None,
-    qr_method: Union[str, QRSolver] = "householder",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Integrate state and variational equations starting from ``x0``.
 
     Returns (LE_final, LE_history, Q_history, R_history, trajectory).
     """
-    qr_solver = _resolve_qr_method(qr_method)
     if k_step > 1:
         return _lyap_int_k_step_from_x0(
             f,
@@ -328,11 +254,8 @@ def run_state_variational_integrator(
             stepper,
             *args,
             n_lyap=n_lyap,
-            qr_solver=qr_solver,
         )
-    return _lyap_int_from_x0(
-        f, Df, x0, t, stepper, *args, n_lyap=n_lyap, qr_solver=qr_solver
-    )
+    return _lyap_int_from_x0(f, Df, x0, t, stepper, *args, n_lyap=n_lyap)
 
 
 __all__ = [

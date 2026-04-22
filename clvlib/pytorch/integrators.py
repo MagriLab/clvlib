@@ -7,62 +7,13 @@ from .steppers import VariationalStepper
 Tensor = torch.Tensor
 
 
-def gram_schmidt_qr(A: torch.Tensor):
-    """
-    Performs QR decomposition using Classical Gram-Schmidt orthogonalization.
-
-    Args:
-        A (torch.Tensor): Input matrix of shape (m, n)
-
-    Returns:
-        Q (torch.Tensor): Orthonormal matrix of shape (m, n)
-        R (torch.Tensor): Upper triangular matrix of shape (n, n)
-    """
-    m, n = A.shape
-    Q = torch.zeros((m, n), dtype=A.dtype, device=A.device)
-    R = torch.zeros((n, n), dtype=A.dtype, device=A.device)
-
-    for j in range(n):
-        v = A[:, j].clone()
-        for i in range(j):
-            R[i, j] = torch.dot(Q[:, i], A[:, j])
-            v -= R[i, j] * Q[:, i]
-        R[j, j] = torch.norm(v, p=2)
-        Q[:, j] = v / R[j, j]
-
+def _qr(Q: Tensor) -> Tuple[Tensor, Tensor]:
+    Q, R = torch.linalg.qr(Q, mode="reduced")
+    s = torch.sign(torch.diagonal(R))
+    s = torch.where(s == 0, torch.ones_like(s), s)
+    Q = Q * s.unsqueeze(0)
+    R = s.unsqueeze(1) * R
     return Q, R
-
-
-def _qr_householder(Q: Tensor) -> Tuple[Tensor, Tensor]:
-    return torch.linalg.qr(Q, mode="reduced")
-
-
-def _qr_gram_schmidt(Q: Tensor) -> Tuple[Tensor, Tensor]:
-    return gram_schmidt_qr(Q)
-
-
-QRSolver = Callable[[Tensor], Tuple[Tensor, Tensor]]
-
-
-_QR_METHODS = {
-    "householder": _qr_householder,
-    "gs": _qr_gram_schmidt,
-    "gram-schmidt": _qr_gram_schmidt,
-    "gram_schmidt": _qr_gram_schmidt,
-}
-
-
-def _resolve_qr_method(qr_method: Union[str, QRSolver]) -> QRSolver:
-    if callable(qr_method):
-        return qr_method
-    method_key = qr_method.lower()
-    try:
-        return _QR_METHODS[method_key]
-    except KeyError as exc:
-        available = ", ".join(sorted(_QR_METHODS))
-        raise ValueError(
-            f"Unknown qr_method '{qr_method}'. Available: {available}."
-        ) from exc
 
 
 def _resolve_n_lyap(n_lyap: Union[int, None], n: int) -> int:
@@ -85,7 +36,6 @@ def _lyap_int(
     stepper: VariationalStepper,
     *args,
     n_lyap: Union[int, None],
-    qr_solver: QRSolver,
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     dt = float((t[1] - t[0]).item())
     nt = t.numel()
@@ -106,7 +56,7 @@ def _lyap_int(
 
     for i in tqdm(range(nt - 1), leave=False):
         _, Q = stepper(f, Df, float(t[i].item()), trajectory[i], Q, dt, *args)
-        Q, R = qr_solver(Q)
+        Q, R = _qr(Q)
         Q_history[i + 1] = Q
         R_history[i + 1] = R
         log_sums = log_sums + torch.log(torch.abs(torch.diagonal(R)))
@@ -124,7 +74,6 @@ def _lyap_int_k_step(
     stepper: VariationalStepper,
     *args,
     n_lyap: Union[int, None],
-    qr_solver: QRSolver,
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     dt = float((t[1] - t[0]).item())
     nt = t.numel()
@@ -149,7 +98,7 @@ def _lyap_int_k_step(
     for i in tqdm(range(nt - 1), leave=False):
         _, Q = stepper(f, Df, float(t[i].item()), trajectory[i], Q, dt, *args)
         if (i + 1) % k_step == 0:
-            Q, R = qr_solver(Q)
+            Q, R = _qr(Q)
             Q_history[j + 1] = Q
             R_history[j + 1] = R
             log_sums = log_sums + torch.log(torch.abs(torch.diagonal(R)))
@@ -167,7 +116,6 @@ def _lyap_int_from_x0(
     stepper: VariationalStepper,
     *args,
     n_lyap: Union[int, None],
-    qr_solver: QRSolver,
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
     dt = float((t[1] - t[0]).item())
     nt = t.numel()
@@ -194,7 +142,7 @@ def _lyap_int_from_x0(
     for i in tqdm(range(nt - 1), leave=False):
         x, Q = stepper(f, Df, float(t[i].item()), x, Q, dt, *args)
         trajectory[i + 1] = x
-        Q, R = qr_solver(Q)
+        Q, R = _qr(Q)
         Q_history[i + 1] = Q
         R_history[i + 1] = R
         log_sums = log_sums + torch.log(torch.abs(torch.diagonal(R)))
@@ -212,7 +160,6 @@ def _lyap_int_k_step_from_x0(
     stepper: VariationalStepper,
     *args,
     n_lyap: Union[int, None],
-    qr_solver: QRSolver,
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
     dt = float((t[1] - t[0]).item())
     nt = t.numel()
@@ -242,7 +189,7 @@ def _lyap_int_k_step_from_x0(
         x, Q = stepper(f, Df, float(t[i].item()), x, Q, dt, *args)
         trajectory[i + 1] = x
         if (i + 1) % k_step == 0:
-            Q, R = qr_solver(Q)
+            Q, R = _qr(Q)
             Q_history[j + 1] = Q
             R_history[j + 1] = R
             log_sums = log_sums + torch.log(torch.abs(torch.diagonal(R)))
@@ -261,13 +208,11 @@ def run_variational_integrator(
     k_step: int = 1,
     stepper: VariationalStepper,
     n_lyap: Union[int, None] = None,
-    qr_method: Union[str, QRSolver] = "householder",
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
     """Integrate variational equations along a provided trajectory.
 
     Returns (LE_final, LE_history, Q_history, R_history).
     """
-    qr_solver = _resolve_qr_method(qr_method)
     if k_step > 1:
         return _lyap_int_k_step(
             f,
@@ -278,11 +223,8 @@ def run_variational_integrator(
             stepper,
             *args,
             n_lyap=n_lyap,
-            qr_solver=qr_solver,
         )
-    return _lyap_int(
-        f, Df, trajectory, t, stepper, *args, n_lyap=n_lyap, qr_solver=qr_solver
-    )
+    return _lyap_int(f, Df, trajectory, t, stepper, *args, n_lyap=n_lyap)
 
 
 def run_state_variational_integrator(
@@ -294,13 +236,11 @@ def run_state_variational_integrator(
     k_step: int = 1,
     stepper: VariationalStepper,
     n_lyap: Union[int, None] = None,
-    qr_method: Union[str, QRSolver] = "householder",
 ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
     """Integrate state and variational equations starting from ``x0``.
 
     Returns (LE_final, LE_history, Q_history, R_history, trajectory).
     """
-    qr_solver = _resolve_qr_method(qr_method)
     if k_step > 1:
         return _lyap_int_k_step_from_x0(
             f,
@@ -311,15 +251,11 @@ def run_state_variational_integrator(
             stepper,
             *args,
             n_lyap=n_lyap,
-            qr_solver=qr_solver,
         )
-    return _lyap_int_from_x0(
-        f, Df, x0, t, stepper, *args, n_lyap=n_lyap, qr_solver=qr_solver
-    )
+    return _lyap_int_from_x0(f, Df, x0, t, stepper, *args, n_lyap=n_lyap)
 
 
 __all__ = [
     "run_variational_integrator",
     "run_state_variational_integrator",
-    "gram_schmidt_qr",
 ]

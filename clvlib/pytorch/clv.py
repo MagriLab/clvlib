@@ -4,55 +4,32 @@ from tqdm.auto import tqdm
 Tensor = torch.Tensor
 
 
-def _ginelli(Q: Tensor, R: Tensor) -> Tensor:
+def _normalize(C: Tensor) -> tuple[Tensor, Tensor]:
+    D = torch.linalg.norm(C, dim=0)
+    safe_D = torch.where(D == 0, torch.ones_like(D), D)
+    return C / safe_D.unsqueeze(0), D
+
+
+def _ginelli(Q: Tensor, R: Tensor) -> tuple[Tensor, Tensor]:
     """Ginelli algorithm."""
     n_time, n_dim, n_lyap = Q.shape
     V = torch.empty((n_time, n_dim, n_lyap), dtype=Q.dtype, device=Q.device)
+    D_history = torch.empty((n_time, n_lyap), dtype=Q.dtype, device=Q.device)
 
     C = torch.eye(n_lyap, dtype=Q.dtype, device=Q.device)
     V[-1] = Q[-1] @ C
+    D_history[-1] = 1
 
     for i in tqdm(range(n_time - 2, -1, -1), leave=False):
         C = torch.linalg.solve_triangular(R[i], C, upper=True)
-        C /= torch.norm(C, dim=0, keepdim=True)
+        C, D = _normalize(C)
         V[i] = Q[i] @ C
-    return V
+        D_history[i] = D
+    return V, D_history
 
 
-def _upwind_ginelli(Q: Tensor, R: Tensor) -> Tensor:
-    """Upwind (forward-shifted) Ginelli algorithm variant."""
-    n_time, n_dim, n_lyap = Q.shape
-    V = torch.empty((n_time, n_dim, n_lyap), dtype=Q.dtype, device=Q.device)
-
-    C = torch.eye(n_lyap, dtype=Q.dtype, device=Q.device)
-    V[-1] = Q[-1] @ C
-
-    for i in tqdm(range(n_time - 2, -1, -1), leave=False):
-        C = torch.linalg.solve_triangular(R[i + 1], C, upper=True)
-        C /= torch.norm(C, dim=0, keepdim=True)
-        V[i] = Q[i] @ C
-    return V
-
-
-_GINELLI_METHODS = {
-    "ginelli": _ginelli,
-    "upwind": _upwind_ginelli,
-    "upwind_ginelli": _upwind_ginelli,
-}
-
-
-def _clvs(Q: Tensor, R: Tensor, *, ginelli_method: str = "ginelli") -> Tensor:
-    """Dispatch CLV reconstruction to the selected Ginelli variant."""
-    try:
-        solver = _GINELLI_METHODS[ginelli_method.lower()]
-    except KeyError as exc:
-        available = ", ".join(sorted(_GINELLI_METHODS))
-        raise ValueError(
-            f"Unknown ginelli_method '{ginelli_method}'. Available: {available}."
-        ) from exc
-
-    V = solver(Q, R)
-    return V
+def _clvs(Q: Tensor, R: Tensor) -> tuple[Tensor, Tensor]:
+    return _ginelli(Q, R)
 
 
 __all__ = [
