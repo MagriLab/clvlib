@@ -77,8 +77,8 @@ If `clvlib` contributes to your published work, please cite it as:
 
 ```
 @misc{consonni_clvlib_2025,
-  author    = {Riccardo Consonni},
-  title     = {clvlib},
+  author    = {Riccardo Consonni, Luca Magri},
+  title     = {clvlib: a library to compute covariant Lyapunov vectors},
   year      = {2025},
   url       = {https://github.com/riccardo-consonni/clvlib},
 }
