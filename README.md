@@ -9,6 +9,12 @@ The variational stepper used to integrate the variational system is modular. Sta
 pip install clvlib
 ```
 
+Install the PyTorch backend only if you need it:
+
+```bash
+pip install "clvlib[pytorch]"
+```
+
 ## Quickstart
 ```python
 import numpy as np

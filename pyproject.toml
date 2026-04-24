@@ -14,7 +14,6 @@ license = { file = "LICENSE" }
 dependencies = [
   "numpy>=1.22",
   "scipy>=1.8",
-  "torch>=1.12",
   "tqdm>=4.66",
 ]
 readme = "README.md"
@@ -26,10 +25,14 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+pytorch = [
+  "torch>=1.12",
+]
 dev = [
   "pytest>=7",
   "ruff>=0.5",
   "mypy>=1.10",
+  "torch>=1.12",
 ]
 
 [project.urls]
