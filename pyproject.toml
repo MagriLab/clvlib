@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clvlib"
-version = "0.1.2"
+version = "0.1.3"
 description = "Lyapunov exponents and Covariant Lyapunov Vectors utilities"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
