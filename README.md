@@ -1,6 +1,6 @@
 # clvlib
 
-[![DOI](https://zenodo.org/badge/1125891214.svg)](https://doi.org/10.5281/zenodo.19741279)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19763144.svg)](https://doi.org/10.5281/zenodo.19763144)
 
 `clvlib` is a library for computing Lyapunov exponents and Covariant Lyapunov Vectors (CLVs) with NumPy and PyTorch. Lyapunov exponents are computed using Benettin's algorithm [[1]](#R1). The NumPy implementation uses a sign-corrected Householder QR step for re-orthonormalisation, and the CLVs are computed using Ginelli's algorithm [[2]](#R2).
 
@@ -89,8 +89,8 @@ If `clvlib` contributes to your published work, please cite it as:
   title     = {clvlib: a library to compute covariant Lyapunov vectors},
   year      = {2026},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.19741279},
-  url       = {https://doi.org/10.5281/zenodo.19741279},
+  doi       = {10.5281/zenodo.19763144},
+  url       = {https://doi.org/10.5281/zenodo.19763144},
 }
 ```
 
